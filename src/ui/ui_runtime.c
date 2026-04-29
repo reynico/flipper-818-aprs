@@ -1,6 +1,8 @@
 #include "ui_i.h"
 #include "ui_splash.h"
 #include "../version.h"
+#include "../afsk.h"
+#include "../dra818v.h"
 
 #include <furi_hal.h>
 #include <notification/notification.h>
@@ -486,6 +488,15 @@ void flipperham_app_free(FlipperHamApp *app)
     if (!app)
         return;
 
+    if(app->rx_active) {
+        afsk_rx_stop(&app->afsk_rx);
+        app->rx_active = false;
+    }
+    if(app->dra_mode) {
+        dra818v_deinit(&app->dra);
+        app->dra_mode = false;
+    }
+
     if (gapp == app)
         gapp = NULL;
     flipperham_status_view_free(app);
@@ -570,21 +581,35 @@ again:
         view_port_update(app->view_port);
         furi_delay_ms(100);
 
-        flipperham_radio_start(app);
-
-        while (!app->tx_done)
-        {
-            view_port_update(app->view_port);
+        if(app->dra_mode) {
+            dra818v_ptt_on(&app->dra);
             furi_delay_ms(50);
-        }
+            afsk_tx_start(&app->afsk_tx, app->wave, app->wave_len);
 
-        while (app->tx_started && !furi_hal_subghz_is_async_tx_complete())
-        {
-            view_port_update(app->view_port);
-            furi_delay_ms(20);
-        }
+            while(app->afsk_tx.active) {
+                view_port_update(app->view_port);
+                furi_delay_ms(20);
+            }
 
-        flipperham_radio_stop(app);
+            afsk_tx_stop(&app->afsk_tx);
+            furi_delay_ms(50);
+            dra818v_ptt_off(&app->dra);
+            app->tx_done = true;
+        } else {
+            flipperham_radio_start(app);
+
+            while(!app->tx_done) {
+                view_port_update(app->view_port);
+                furi_delay_ms(50);
+            }
+
+            while(app->tx_started && !furi_hal_subghz_is_async_tx_complete()) {
+                view_port_update(app->view_port);
+                furi_delay_ms(20);
+            }
+
+            flipperham_radio_stop(app);
+        }
         furi_hal_light_blink_stop();
         furi_hal_light_set(LightBlue, 0);
         furi_hal_light_set(LightRed, 0);
