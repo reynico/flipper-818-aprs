@@ -614,6 +614,11 @@ again:
             furi_delay_ms(50);
             dra818v_ptt_off(&app->dra);
             app->tx_done = true;
+            app->tx_started = false;
+            furi_hal_light_blink_stop();
+            furi_hal_light_set(LightGreen, 0);
+            furi_hal_light_set(LightRed, 0);
+            furi_hal_light_set(LightBlue, 0);
         } else {
             flipperham_radio_start(app);
 

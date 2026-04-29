@@ -150,22 +150,10 @@ static int32_t afsk_rx_worker(void *ctx)
 {
     AfskRx *rx = ctx;
     int16_t block[AFSK_SAMPLES_PER_BIT];
-    uint32_t last_tick;
-    uint32_t period;
-
-    period = SystemCoreClock / AFSK_SAMPLE_RATE;
-    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
-    DWT->CYCCNT = 0;
-    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
-
-    last_tick = DWT->CYCCNT;
 
     while(rx->running) {
         for(uint8_t i = 0; i < AFSK_SAMPLES_PER_BIT; i++) {
-            while((DWT->CYCCNT - last_tick) < period)
-                ;
-            last_tick += period;
-
+            furi_delay_us(76);
             uint16_t raw = furi_hal_adc_read(rx->adc, FuriHalAdcChannel11);
             block[i] = (int16_t)raw - 2048;
         }
@@ -178,6 +166,7 @@ static int32_t afsk_rx_worker(void *ctx)
         rx->last_tone = is_mark;
 
         rx_process_bit(rx, bit);
+        furi_thread_yield();
     }
 
     return 0;
@@ -200,7 +189,7 @@ void afsk_rx_start(AfskRx *rx, void (*cb)(AfskFrame *, void *), void *ctx)
 
     rx->running = true;
     rx->worker = furi_thread_alloc_ex("afsk_rx", 4096, afsk_rx_worker, rx);
-    furi_thread_set_priority(rx->worker, FuriThreadPriorityHighest);
+    furi_thread_set_priority(rx->worker, FuriThreadPriorityNormal);
     furi_thread_start(rx->worker);
 }
 
