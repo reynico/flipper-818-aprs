@@ -769,7 +769,11 @@ static void rx_draw(Canvas *canvas, void *ctx)
         (unsigned long)app->afsk_rx.dbg_flags);
     canvas_draw_str(canvas, 0, 32, line);
 
-    snprintf(line, sizeof(line), "Packets: %u", app->rx_count);
+    snprintf(
+        line, sizeof(line), "OK:%u CRC:%lu len:%u",
+        app->rx_count,
+        (unsigned long)app->afsk_rx.dbg_crc_fail,
+        app->afsk_rx.dbg_last_frame_len);
     canvas_draw_str(canvas, 0, 42, line);
 
     if(app->has_decoded) {
@@ -811,7 +815,7 @@ void flipperham_rx_enter(FlipperHamApp *app)
 
     while(app->rx_active) {
         view_port_update(app->rx_view_port);
-        furi_delay_ms(100);
+        furi_delay_ms(500);
     }
 
     afsk_rx_stop(&app->afsk_rx);

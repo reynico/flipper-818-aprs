@@ -81,7 +81,7 @@ void afsk_tx_stop(AfskTx *tx)
 
 #define AFSK_DELAY       6
 #define AFSK_LPF_ALPHA   0.30f
-#define AFSK_NOISE_FLOOR 5000.0f
+#define AFSK_NOISE_FLOOR 500.0f
 
 /* ── RX: bit-level AX.25 state machine ─────────────────────────── */
 
@@ -98,11 +98,14 @@ static void rx_process_bit(AfskRx *rx, uint8_t bit)
             return;
     } else {
         if(rx->ones_count == 6) {
-            if(rx->state == AfskRxData && rx->frame_len >= 17 && rx->bit_pos == 0) {
+            if(rx->state == AfskRxData && rx->frame_len >= 17) {
+                rx->dbg_last_frame_len = rx->frame_len;
                 AfskFrame frame;
                 if(ax25_decode_frame(rx->frame_buf, rx->frame_len, &frame)) {
                     if(rx->frame_cb)
                         rx->frame_cb(&frame, rx->frame_ctx);
+                } else {
+                    rx->dbg_crc_fail++;
                 }
             }
             rx->state = AfskRxData;
@@ -147,7 +150,7 @@ static int32_t afsk_rx_worker(void *ctx)
     uint32_t sample_n = 0;
 
     while(rx->running) {
-        furi_delay_us(76);
+        furi_delay_us(68);
         uint16_t raw = furi_hal_adc_read(rx->adc, FuriHalAdcChannel11);
         dc_avg = dc_avg * 0.995f + (float)raw * 0.005f;
         int16_t x = (int16_t)((float)raw - dc_avg);
@@ -172,10 +175,10 @@ static int32_t afsk_rx_worker(void *ctx)
 
         bool cur_sign = lpf > 0;
         if(cur_sign != last_sign) {
-            if(bit_phase < (AFSK_SAMPLES_PER_BIT / 2))
-                bit_phase++;
-            else if(bit_phase > (AFSK_SAMPLES_PER_BIT / 2 + 1))
-                bit_phase--;
+            if(bit_phase < 4)
+                bit_phase += 2;
+            else if(bit_phase > 7)
+                bit_phase -= 2;
             last_sign = cur_sign;
         }
 
