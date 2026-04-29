@@ -79,8 +79,9 @@ void afsk_tx_stop(AfskTx *tx)
 
 /* ── RX: delay-and-multiply tone discriminator ──────────────────── */
 
-#define AFSK_DELAY     6
-#define AFSK_LPF_ALPHA 0.30f
+#define AFSK_DELAY       6
+#define AFSK_LPF_ALPHA   0.30f
+#define AFSK_NOISE_FLOOR 5000.0f
 
 /* ── RX: bit-level AX.25 state machine ─────────────────────────── */
 
@@ -182,14 +183,19 @@ static int32_t afsk_rx_worker(void *ctx)
         if(bit_phase >= AFSK_SAMPLES_PER_BIT) {
             bit_phase = 0;
 
-            bool is_mark = lpf < 0;
-            uint8_t bit = (is_mark == rx->last_tone) ? 1 : 0;
-            rx->last_tone = is_mark;
+            float mag = lpf < 0 ? -lpf : lpf;
+            rx->dbg_space = mag;
 
-            if(rx->ones_count == 6 && !bit)
-                rx->dbg_flags++;
+            if(mag > AFSK_NOISE_FLOOR) {
+                bool is_mark = lpf < 0;
+                uint8_t bit = (is_mark == rx->last_tone) ? 1 : 0;
+                rx->last_tone = is_mark;
 
-            rx_process_bit(rx, bit);
+                if(rx->ones_count == 6 && !bit)
+                    rx->dbg_flags++;
+
+                rx_process_bit(rx, bit);
+            }
         }
 
         if((sample_n & 0xF) == 0)

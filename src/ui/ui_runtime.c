@@ -727,7 +727,7 @@ static bool dra818v_ensure_ready(FlipperHamApp *app)
     }
 
     dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, 4);
-    dra818v_set_volume(&app->dra, 4);
+    dra818v_set_volume(&app->dra, 8);
     dra818v_set_filter(&app->dra, false, false, false);
     return true;
 }
@@ -759,14 +759,14 @@ static void rx_draw(Canvas *canvas, void *ctx)
     canvas_set_font(canvas, FontSecondary);
 
     snprintf(
-        line, sizeof(line), "ADC: %d..%d  flags:%lu",
-        app->afsk_rx.dbg_adc_min, app->afsk_rx.dbg_adc_max,
-        (unsigned long)app->afsk_rx.dbg_flags);
+        line, sizeof(line), "ADC: %d..%d",
+        app->afsk_rx.dbg_adc_min, app->afsk_rx.dbg_adc_max);
     canvas_draw_str(canvas, 0, 22, line);
 
     snprintf(
-        line, sizeof(line), "M:%.0f S:%.0f",
-        (double)app->afsk_rx.dbg_mark, (double)app->afsk_rx.dbg_space);
+        line, sizeof(line), "LPF:%.0f |%.0f| fl:%lu",
+        (double)app->afsk_rx.dbg_mark, (double)app->afsk_rx.dbg_space,
+        (unsigned long)app->afsk_rx.dbg_flags);
     canvas_draw_str(canvas, 0, 32, line);
 
     snprintf(line, sizeof(line), "Packets: %u", app->rx_count);
