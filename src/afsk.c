@@ -77,23 +77,10 @@ void afsk_tx_stop(AfskTx *tx)
     furi_hal_gpio_init(&gpio_ext_pa4, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
 }
 
-/* ── RX: Goertzel tone detection ────────────────────────────────── */
+/* ── RX: delay-and-multiply tone discriminator ──────────────────── */
 
-static const float goertzel_coeff_mark = 1.68251f;
-static const float goertzel_coeff_space = 1.0f;
-
-static float goertzel_mag(const int16_t *buf, uint8_t n, float coeff)
-{
-    float s1 = 0, s2 = 0;
-
-    for(uint8_t i = 0; i < n; i++) {
-        float s0 = (float)buf[i] + coeff * s1 - s2;
-        s2 = s1;
-        s1 = s0;
-    }
-
-    return s1 * s1 + s2 * s2 - coeff * s1 * s2;
-}
+#define AFSK_DELAY     6
+#define AFSK_LPF_ALPHA 0.30f
 
 /* ── RX: bit-level AX.25 state machine ─────────────────────────── */
 
@@ -149,44 +136,64 @@ static void rx_process_bit(AfskRx *rx, uint8_t bit)
 static int32_t afsk_rx_worker(void *ctx)
 {
     AfskRx *rx = ctx;
-    int16_t block[AFSK_SAMPLES_PER_BIT];
-    int16_t adc_min = 32767, adc_max = -32768;
+    int16_t delay_line[AFSK_DELAY] = {0};
+    uint8_t delay_idx = 0;
+    float lpf = 0;
     float dc_avg = 2048.0f;
+    bool last_sign = false;
+    uint8_t bit_phase = 0;
+    int16_t adc_min = 32767, adc_max = -32768;
     uint32_t sample_n = 0;
 
     while(rx->running) {
-        for(uint8_t i = 0; i < AFSK_SAMPLES_PER_BIT; i++) {
-            furi_delay_us(76);
-            uint16_t raw = furi_hal_adc_read(rx->adc, FuriHalAdcChannel11);
-            dc_avg = dc_avg * 0.995f + (float)raw * 0.005f;
-            int16_t centered = (int16_t)((float)raw - dc_avg);
-            block[i] = centered;
-            if(centered < adc_min) adc_min = centered;
-            if(centered > adc_max) adc_max = centered;
-        }
+        furi_delay_us(76);
+        uint16_t raw = furi_hal_adc_read(rx->adc, FuriHalAdcChannel11);
+        dc_avg = dc_avg * 0.995f + (float)raw * 0.005f;
+        int16_t x = (int16_t)((float)raw - dc_avg);
 
+        if(x < adc_min) adc_min = x;
+        if(x > adc_max) adc_max = x;
         sample_n++;
-        if((sample_n & 0x3F) == 0) {
+        if((sample_n & 0xFF) == 0) {
             rx->dbg_adc_min = adc_min;
             rx->dbg_adc_max = adc_max;
             adc_min = 32767;
             adc_max = -32768;
         }
 
-        float m_mark = goertzel_mag(block, AFSK_SAMPLES_PER_BIT, goertzel_coeff_mark);
-        float m_space = goertzel_mag(block, AFSK_SAMPLES_PER_BIT, goertzel_coeff_space);
-        rx->dbg_mark = m_mark;
-        rx->dbg_space = m_space;
-        bool is_mark = m_mark > m_space;
+        float product = (float)x * (float)delay_line[delay_idx];
+        delay_line[delay_idx] = x;
+        delay_idx++;
+        if(delay_idx >= AFSK_DELAY) delay_idx = 0;
 
-        uint8_t bit = (is_mark == rx->last_tone) ? 1 : 0;
-        rx->last_tone = is_mark;
+        lpf = lpf * (1.0f - AFSK_LPF_ALPHA) + product * AFSK_LPF_ALPHA;
+        rx->dbg_mark = lpf;
 
-        if(rx->ones_count == 6 && !bit)
-            rx->dbg_flags++;
+        bool cur_sign = lpf > 0;
+        if(cur_sign != last_sign) {
+            if(bit_phase < (AFSK_SAMPLES_PER_BIT / 2))
+                bit_phase++;
+            else if(bit_phase > (AFSK_SAMPLES_PER_BIT / 2 + 1))
+                bit_phase--;
+            last_sign = cur_sign;
+        }
 
-        rx_process_bit(rx, bit);
-        furi_thread_yield();
+        bit_phase++;
+        if(bit_phase >= AFSK_SAMPLES_PER_BIT) {
+            bit_phase = 0;
+
+            bool is_mark = lpf < 0;
+            uint8_t bit = (is_mark == rx->last_tone) ? 1 : 0;
+            rx->last_tone = is_mark;
+
+            if(rx->ones_count == 6 && !bit)
+                rx->dbg_flags++;
+
+            rx_process_bit(rx, bit);
+        }
+
+        if((sample_n & 0xF) == 0)
+            furi_thread_yield();
     }
 
     return 0;
