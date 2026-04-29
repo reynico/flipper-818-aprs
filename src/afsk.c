@@ -150,20 +150,37 @@ static int32_t afsk_rx_worker(void *ctx)
 {
     AfskRx *rx = ctx;
     int16_t block[AFSK_SAMPLES_PER_BIT];
+    int16_t adc_min = 32767, adc_max = -32768;
+    uint32_t sample_n = 0;
 
     while(rx->running) {
         for(uint8_t i = 0; i < AFSK_SAMPLES_PER_BIT; i++) {
             furi_delay_us(76);
             uint16_t raw = furi_hal_adc_read(rx->adc, FuriHalAdcChannel11);
             block[i] = (int16_t)raw - 2048;
+            if(block[i] < adc_min) adc_min = block[i];
+            if(block[i] > adc_max) adc_max = block[i];
+        }
+
+        sample_n++;
+        if((sample_n & 0x3F) == 0) {
+            rx->dbg_adc_min = adc_min;
+            rx->dbg_adc_max = adc_max;
+            adc_min = 32767;
+            adc_max = -32768;
         }
 
         float m_mark = goertzel_mag(block, AFSK_SAMPLES_PER_BIT, goertzel_coeff_mark);
         float m_space = goertzel_mag(block, AFSK_SAMPLES_PER_BIT, goertzel_coeff_space);
+        rx->dbg_mark = m_mark;
+        rx->dbg_space = m_space;
         bool is_mark = m_mark > m_space;
 
         uint8_t bit = (is_mark == rx->last_tone) ? 1 : 0;
         rx->last_tone = is_mark;
+
+        if(rx->ones_count == 6 && !bit)
+            rx->dbg_flags++;
 
         rx_process_bit(rx, bit);
         furi_thread_yield();

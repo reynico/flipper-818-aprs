@@ -61,6 +61,12 @@ typedef struct {
     FuriHalAdcHandle *adc;
     volatile bool running;
     FuriThread *worker;
+
+    volatile int16_t dbg_adc_min;
+    volatile int16_t dbg_adc_max;
+    volatile float dbg_mark;
+    volatile float dbg_space;
+    volatile uint32_t dbg_flags;
 } AfskRx;
 
 void afsk_tx_start(AfskTx *tx, uint16_t *wave, uint16_t wave_len);

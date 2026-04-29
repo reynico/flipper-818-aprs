@@ -749,7 +749,7 @@ static void rx_frame_callback(AfskFrame *frame, void *ctx)
 static void rx_draw(Canvas *canvas, void *ctx)
 {
     FlipperHamApp *app = ctx;
-    char line[40];
+    char line[44];
 
     canvas_clear(canvas);
     canvas_set_font(canvas, FontPrimary);
@@ -757,32 +757,28 @@ static void rx_draw(Canvas *canvas, void *ctx)
     canvas_draw_str(canvas, 0, 10, line);
 
     canvas_set_font(canvas, FontSecondary);
-    snprintf(line, sizeof(line), "Packets: %u", app->rx_count);
+
+    snprintf(
+        line, sizeof(line), "ADC: %d..%d  flags:%lu",
+        app->afsk_rx.dbg_adc_min, app->afsk_rx.dbg_adc_max,
+        (unsigned long)app->afsk_rx.dbg_flags);
     canvas_draw_str(canvas, 0, 22, line);
 
+    snprintf(
+        line, sizeof(line), "M:%.0f S:%.0f",
+        (double)app->afsk_rx.dbg_mark, (double)app->afsk_rx.dbg_space);
+    canvas_draw_str(canvas, 0, 32, line);
+
+    snprintf(line, sizeof(line), "Packets: %u", app->rx_count);
+    canvas_draw_str(canvas, 0, 42, line);
+
     if(app->has_decoded) {
-        snprintf(line, sizeof(line), "From: %s", app->last_decoded.src);
-        canvas_draw_str(canvas, 0, 34, line);
-
-        if(app->last_decoded.has_pos) {
-            snprintf(
-                line, sizeof(line), "Pos: %.4f, %.4f",
-                (double)app->last_decoded.lat, (double)app->last_decoded.lon);
-            canvas_draw_str(canvas, 0, 44, line);
-        }
-
-        if(app->last_decoded.has_msg) {
-            snprintf(line, sizeof(line), "Msg: %.26s", app->last_decoded.msg_text);
-            canvas_draw_str(canvas, 0, 54, line);
-        } else if(app->last_decoded.comment[0]) {
-            snprintf(line, sizeof(line), "%.30s", app->last_decoded.comment);
-            canvas_draw_str(canvas, 0, 54, line);
-        }
-    } else {
-        canvas_draw_str(canvas, 0, 40, "Listening...");
+        snprintf(line, sizeof(line), "%s: %.22s",
+            app->last_decoded.src,
+            app->last_decoded.has_msg ? app->last_decoded.msg_text : app->last_decoded.comment);
+        canvas_draw_str(canvas, 0, 52, line);
     }
 
-    canvas_set_font(canvas, FontSecondary);
     canvas_draw_str(canvas, 0, 63, "[BACK] exit");
 }
 
