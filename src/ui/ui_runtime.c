@@ -727,7 +727,7 @@ static bool dra818v_ensure_ready(FlipperHamApp *app)
     }
 
     dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, 4);
-    dra818v_set_volume(&app->dra, 8);
+    dra818v_set_volume(&app->dra, 4);
     dra818v_set_filter(&app->dra, false, false, false);
     return true;
 }

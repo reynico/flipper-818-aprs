@@ -151,15 +151,18 @@ static int32_t afsk_rx_worker(void *ctx)
     AfskRx *rx = ctx;
     int16_t block[AFSK_SAMPLES_PER_BIT];
     int16_t adc_min = 32767, adc_max = -32768;
+    float dc_avg = 2048.0f;
     uint32_t sample_n = 0;
 
     while(rx->running) {
         for(uint8_t i = 0; i < AFSK_SAMPLES_PER_BIT; i++) {
             furi_delay_us(76);
             uint16_t raw = furi_hal_adc_read(rx->adc, FuriHalAdcChannel11);
-            block[i] = (int16_t)raw - 2048;
-            if(block[i] < adc_min) adc_min = block[i];
-            if(block[i] > adc_max) adc_max = block[i];
+            dc_avg = dc_avg * 0.995f + (float)raw * 0.005f;
+            int16_t centered = (int16_t)((float)raw - dc_avg);
+            block[i] = centered;
+            if(centered < adc_min) adc_min = centered;
+            if(centered > adc_max) adc_max = centered;
         }
 
         sample_n++;
@@ -202,7 +205,12 @@ void afsk_rx_start(AfskRx *rx, void (*cb)(AfskFrame *, void *), void *ctx)
     furi_hal_gpio_init(&gpio_ext_pa6, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
 
     rx->adc = furi_hal_adc_acquire();
-    furi_hal_adc_configure(rx->adc);
+    furi_hal_adc_configure_ex(
+        rx->adc,
+        FuriHalAdcScale2500,
+        FuriHalAdcClockSync64,
+        FuriHalAdcOversampleNone,
+        FuriHalAdcSamplingtime12_5);
 
     rx->running = true;
     rx->worker = furi_thread_alloc_ex("afsk_rx", 4096, afsk_rx_worker, rx);
