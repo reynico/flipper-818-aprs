@@ -1056,26 +1056,15 @@ static void debug_change(VariableItem *item)
 static void radio_mode_change(VariableItem *item)
 {
     FlipperHamApp *app = variable_item_get_context(item);
-    bool want_dra = variable_item_get_current_value_index(item) == 1;
 
-    if(want_dra && !app->dra_mode) {
-        if(dra818v_init(&app->dra)) {
-            if(dra818v_handshake(&app->dra)) {
-                dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, 4);
-                dra818v_set_volume(&app->dra, 8);
-                dra818v_set_filter(&app->dra, false, false, false);
-                app->dra_mode = true;
-            } else {
-                dra818v_deinit(&app->dra);
-            }
-        }
-    } else if(!want_dra && app->dra_mode) {
+    app->dra_mode = variable_item_get_current_value_index(item) == 1;
+
+    if(!app->dra_mode && app->dra.ready) {
         if(app->rx_active) {
             afsk_rx_stop(&app->afsk_rx);
             app->rx_active = false;
         }
         dra818v_deinit(&app->dra);
-        app->dra_mode = false;
     }
 
     variable_item_set_current_value_text(

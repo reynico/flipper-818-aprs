@@ -16,6 +16,7 @@
 
 static void status_input(InputEvent *event, void *context);
 static void dbgkey(FlipperHamApp *app, InputKey key);
+static bool dra818v_ensure_ready(FlipperHamApp *app);
 
 static void dbgkey(FlipperHamApp *app, InputKey key)
 {
@@ -598,7 +599,7 @@ again:
         view_port_update(app->view_port);
         furi_delay_ms(100);
 
-        if(app->dra_mode) {
+        if(app->dra_mode && dra818v_ensure_ready(app)) {
             dra818v_ptt_on(&app->dra);
             furi_delay_ms(50);
             afsk_tx_start(&app->afsk_tx, app->wave, app->wave_len);
@@ -708,6 +709,23 @@ again:
     app->wave = NULL;
 }
 
+static bool dra818v_ensure_ready(FlipperHamApp *app)
+{
+    if(app->dra.ready) return true;
+
+    if(!dra818v_init(&app->dra)) return false;
+
+    if(!dra818v_handshake(&app->dra)) {
+        dra818v_deinit(&app->dra);
+        return false;
+    }
+
+    dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, 4);
+    dra818v_set_volume(&app->dra, 8);
+    dra818v_set_filter(&app->dra, false, false, false);
+    return true;
+}
+
 /* ── RX listen view ─────────────────────────────────────────────── */
 
 static void rx_frame_callback(AfskFrame *frame, void *ctx)
@@ -776,6 +794,7 @@ static void rx_input(InputEvent *event, void *ctx)
 void flipperham_rx_enter(FlipperHamApp *app)
 {
     if(!app->dra_mode) return;
+    if(!dra818v_ensure_ready(app)) return;
 
     app->rx_count = 0;
     app->has_decoded = false;
