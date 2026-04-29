@@ -80,7 +80,7 @@ void afsk_tx_stop(AfskTx *tx)
 /* ── RX: delay-and-multiply tone discriminator ──────────────────── */
 
 #define AFSK_DELAY       6
-#define AFSK_LPF_ALPHA   0.20f
+#define AFSK_LPF_ALPHA   0.30f
 #define AFSK_NOISE_FLOOR 500.0f
 
 /* ── RX: bit-level AX.25 state machine ─────────────────────────── */
