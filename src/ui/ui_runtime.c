@@ -6,6 +6,7 @@
 #include "../ax25_decode.h"
 
 #include <furi_hal.h>
+#include <furi_hal_resources.h>
 #include <notification/notification.h>
 #include <notification/notification_messages.h>
 
@@ -346,6 +347,19 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->text_view = FlipperHamViewMenu;
     app->pkt = NULL;
     app->wave = NULL;
+
+    app->dra_mode = false;
+    app->dra.ptt_pin = &gpio_ext_pb3;
+    app->dra.pd_pin = &gpio_ext_pb2;
+    app->dra.sq_pin = &gpio_ext_pc3;
+    app->dra.serial = NULL;
+    app->dra.rx_buf = NULL;
+    app->dra.ready = false;
+    app->dra_freq = 144.3900f;
+    app->has_decoded = false;
+    app->rx_active = false;
+    app->rx_count = 0;
+    app->rx_view_port = NULL;
 
     cfgload(app);
     app->dbg_mod = app->rf_mod;
