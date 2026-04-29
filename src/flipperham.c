@@ -4,6 +4,7 @@
 #include "rf_gen.h"
 
 #include <furi_hal_subghz.h>
+#include <furi_hal_resources.h>
 #include <storage/storage.h>
 
 #include <stddef.h>
@@ -80,6 +81,14 @@ static void cfg_defaults(FlipperHamApp *app)
     app->freq_n = 1;
 
     preset_fix(app);
+
+    app->dra_mode = false;
+    app->dra.ptt_pin = &gpio_ext_pb3;
+    app->dra.pd_pin = &gpio_ext_pb2;
+    app->dra.sq_pin = &gpio_ext_pc3;
+    app->dra_freq = 144.3900f;
+    app->has_decoded = false;
+    app->rx_active = false;
 }
 
 void cfgsave(FlipperHamApp *app)

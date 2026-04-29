@@ -2,6 +2,9 @@
 
 #include "flipperham.h"
 #include "packet.h"
+#include "dra818v.h"
+#include "afsk.h"
+#include "ax25_decode.h"
 
 #include <gui/modules/submenu.h>
 #include <gui/modules/text_input.h>
@@ -148,4 +151,13 @@ typedef struct FlipperHamApp
     char freq_s[FREQ_N][16];
     uint8_t aprs_path_index;
     uint32_t freq_edit_hz;
+
+    bool dra_mode;
+    Dra818v dra;
+    AfskTx afsk_tx;
+    AfskRx afsk_rx;
+    AprsDecoded last_decoded;
+    bool has_decoded;
+    bool rx_active;
+    float dra_freq;
 } FlipperHamApp;
