@@ -357,6 +357,7 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->dra.rx_buf = NULL;
     app->dra.ready = false;
     app->dra_freq = 144.3900f;
+    app->dra_freq_index = 0;
     app->has_decoded = false;
     app->rx_active = false;
     app->rx_count = 0;

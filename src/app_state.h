@@ -161,5 +161,6 @@ typedef struct FlipperHamApp
     bool has_decoded;
     bool rx_active;
     float dra_freq;
+    uint8_t dra_freq_index;
     ViewPort *rx_view_port;
 } FlipperHamApp;

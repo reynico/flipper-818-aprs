@@ -20,6 +20,7 @@ static void c2(void *context, uint32_t index);
 static void aprs_path_change(VariableItem *item);
 static void debug_change(VariableItem *item);
 static void radio_mode_change(VariableItem *item);
+static void vhf_freq_change(VariableItem *item);
 static void aprs_path_custom_save(void *context);
 static const char *aprs_paths[] = {"None", "RFONLY", "NOGATE", "W1-1", "W2-2", "ARISS", "APRSAT", "Custom"};
 FlipperHamApp *gapp;
@@ -790,6 +791,28 @@ void ham_tx_menu_build(FlipperHamApp *app)
     variable_item_list_set_selected_item(app->ham_tx_menu, app->ham_tx_sel);
 }
 
+static const float vhf_freqs[] = {
+    144.3900f,
+    144.8000f,
+    145.1750f,
+    144.6400f,
+    144.6600f,
+    145.5250f,
+    432.5000f,
+};
+
+static const char *vhf_labels[] = {
+    "144.3900 NA",
+    "144.8000 EU",
+    "145.1750 AU",
+    "144.6400 JP",
+    "144.6600 CN",
+    "145.5250 NZ",
+    "432.5000 70cm",
+};
+
+#define VHF_FREQ_COUNT (sizeof(vhf_freqs) / sizeof(vhf_freqs[0]))
+
 void settings_menu_build(FlipperHamApp *app)
 {
     VariableItem *it;
@@ -848,6 +871,13 @@ void settings_menu_build(FlipperHamApp *app)
     it = variable_item_list_add(app->settings_menu, "Radio", 2, radio_mode_change, app);
     variable_item_set_current_value_index(it, app->dra_mode ? 1 : 0);
     variable_item_set_current_value_text(it, app->dra_mode ? "DRA818V" : "CC1101");
+
+    if(app->dra_mode) {
+        it = variable_item_list_add(
+            app->settings_menu, "VHF Freq", VHF_FREQ_COUNT, vhf_freq_change, app);
+        variable_item_set_current_value_index(it, app->dra_freq_index);
+        variable_item_set_current_value_text(it, vhf_labels[app->dra_freq_index]);
+    }
 
     it = variable_item_list_add(app->settings_menu, "Debug", 2, debug_change, app);
     variable_item_set_current_value_index(it, app->debug_tx ? 1 : 0);
@@ -1069,6 +1099,23 @@ static void radio_mode_change(VariableItem *item)
 
     variable_item_set_current_value_text(
         item, app->dra_mode ? "DRA818V" : "CC1101");
+
+    settings_menu_build(app);
+}
+
+static void vhf_freq_change(VariableItem *item)
+{
+    FlipperHamApp *app = variable_item_get_context(item);
+
+    app->dra_freq_index = variable_item_get_current_value_index(item);
+    if(app->dra_freq_index >= VHF_FREQ_COUNT)
+        app->dra_freq_index = 0;
+
+    app->dra_freq = vhf_freqs[app->dra_freq_index];
+    variable_item_set_current_value_text(item, vhf_labels[app->dra_freq_index]);
+
+    if(app->dra.ready)
+        dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, 4);
 }
 
 void profile_change(VariableItem *item)
