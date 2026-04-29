@@ -534,6 +534,10 @@ void flipperham_menu_callback(void *context, uint32_t index)
 
     if (index == FlipperHamMenuIndexSend)
         view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewSend);
+    if (index == FlipperHamMenuIndexRx) {
+        flipperham_rx_enter(app);
+        return;
+    }
     if (index == FlipperHamMenuIndexSettings)
     {
         settings_menu_build(app);

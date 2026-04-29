@@ -89,6 +89,7 @@ enum
 enum
 {
     FlipperHamMenuIndexSend = 0,
+    FlipperHamMenuIndexRx,
     FlipperHamMenuIndexSettings,
     FlipperHamMenuIndexCallbook,
     FlipperHamMenuIndexHam,

@@ -3,6 +3,7 @@
 #include "../version.h"
 #include "../afsk.h"
 #include "../dra818v.h"
+#include "../ax25_decode.h"
 
 #include <furi_hal.h>
 #include <notification/notification.h>
@@ -355,6 +356,8 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->return_view = splash_startup_view(app);
 
     submenu_add_item(app->submenu, "Send", FlipperHamMenuIndexSend, flipperham_menu_callback, app);
+    submenu_add_item(
+        app->submenu, "RX Listen", FlipperHamMenuIndexRx, flipperham_menu_callback, app);
     submenu_add_item(app->submenu, "Settings", FlipperHamMenuIndexSettings,
                      flipperham_menu_callback, app);
     submenu_add_item(app->submenu, "Callbook", FlipperHamMenuIndexCallbook,
@@ -689,4 +692,96 @@ again:
     free(app->wave);
     app->pkt = NULL;
     app->wave = NULL;
+}
+
+/* ── RX listen view ─────────────────────────────────────────────── */
+
+static void rx_frame_callback(AfskFrame *frame, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+    AprsDecoded dec;
+
+    if(aprs_decode(frame, &dec)) {
+        app->last_decoded = dec;
+        app->has_decoded = true;
+        app->rx_count++;
+    }
+}
+
+static void rx_draw(Canvas *canvas, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+    char line[40];
+
+    canvas_clear(canvas);
+    canvas_set_font(canvas, FontPrimary);
+    snprintf(line, sizeof(line), "RX %.4f MHz", (double)app->dra_freq);
+    canvas_draw_str(canvas, 0, 10, line);
+
+    canvas_set_font(canvas, FontSecondary);
+    snprintf(line, sizeof(line), "Packets: %u", app->rx_count);
+    canvas_draw_str(canvas, 0, 22, line);
+
+    if(app->has_decoded) {
+        snprintf(line, sizeof(line), "From: %s", app->last_decoded.src);
+        canvas_draw_str(canvas, 0, 34, line);
+
+        if(app->last_decoded.has_pos) {
+            snprintf(
+                line, sizeof(line), "Pos: %.4f, %.4f",
+                (double)app->last_decoded.lat, (double)app->last_decoded.lon);
+            canvas_draw_str(canvas, 0, 44, line);
+        }
+
+        if(app->last_decoded.has_msg) {
+            snprintf(line, sizeof(line), "Msg: %.26s", app->last_decoded.msg_text);
+            canvas_draw_str(canvas, 0, 54, line);
+        } else if(app->last_decoded.comment[0]) {
+            snprintf(line, sizeof(line), "%.30s", app->last_decoded.comment);
+            canvas_draw_str(canvas, 0, 54, line);
+        }
+    } else {
+        canvas_draw_str(canvas, 0, 40, "Listening...");
+    }
+
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str(canvas, 0, 63, "[BACK] exit");
+}
+
+static void rx_input(InputEvent *event, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+
+    if(event->type != InputTypeShort) return;
+
+    if(event->key == InputKeyBack) {
+        app->rx_active = false;
+    }
+}
+
+void flipperham_rx_enter(FlipperHamApp *app)
+{
+    if(!app->dra_mode) return;
+
+    app->rx_count = 0;
+    app->has_decoded = false;
+    app->rx_active = true;
+
+    app->rx_view_port = view_port_alloc();
+    view_port_draw_callback_set(app->rx_view_port, rx_draw, app);
+    view_port_input_callback_set(app->rx_view_port, rx_input, app);
+    gui_add_view_port(app->gui, app->rx_view_port, GuiLayerFullscreen);
+
+    afsk_rx_start(&app->afsk_rx, rx_frame_callback, app);
+
+    while(app->rx_active) {
+        view_port_update(app->rx_view_port);
+        furi_delay_ms(100);
+    }
+
+    afsk_rx_stop(&app->afsk_rx);
+
+    gui_remove_view_port(app->gui, app->rx_view_port);
+    view_port_free(app->rx_view_port);
+    app->rx_view_port = NULL;
 }

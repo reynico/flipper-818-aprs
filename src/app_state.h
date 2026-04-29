@@ -157,7 +157,9 @@ typedef struct FlipperHamApp
     AfskTx afsk_tx;
     AfskRx afsk_rx;
     AprsDecoded last_decoded;
+    uint16_t rx_count;
     bool has_decoded;
     bool rx_active;
     float dra_freq;
+    ViewPort *rx_view_port;
 } FlipperHamApp;
