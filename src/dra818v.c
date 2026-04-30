@@ -152,6 +152,11 @@ void dra818v_ptt_off(Dra818v *dra)
     furi_hal_gpio_write(dra->ptt_pin, true);
 }
 
+bool dra818v_send_raw(Dra818v *dra, const char *cmd, char *resp, size_t resp_size)
+{
+    return send_cmd(dra, cmd, resp, resp_size);
+}
+
 bool dra818v_squelch_open(Dra818v *dra)
 {
     if(!dra->sq_pin) return true;

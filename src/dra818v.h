@@ -25,3 +25,4 @@ bool dra818v_set_filter(Dra818v *dra, bool pre_emph, bool highpass, bool lowpass
 void dra818v_ptt_on(Dra818v *dra);
 void dra818v_ptt_off(Dra818v *dra);
 bool dra818v_squelch_open(Dra818v *dra);
+bool dra818v_send_raw(Dra818v *dra, const char *cmd, char *resp, size_t resp_size);

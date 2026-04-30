@@ -374,6 +374,8 @@ FlipperHamApp *flipperham_app_alloc(void)
     submenu_add_item(app->submenu, "Send", FlipperHamMenuIndexSend, flipperham_menu_callback, app);
     submenu_add_item(
         app->submenu, "RX Listen", FlipperHamMenuIndexRx, flipperham_menu_callback, app);
+    submenu_add_item(
+        app->submenu, "DRA818V Diag", FlipperHamMenuIndexDiag, flipperham_menu_callback, app);
     submenu_add_item(app->submenu, "Settings", FlipperHamMenuIndexSettings,
                      flipperham_menu_callback, app);
     submenu_add_item(app->submenu, "Callbook", FlipperHamMenuIndexCallbook,
@@ -726,8 +728,13 @@ static bool dra818v_ensure_ready(FlipperHamApp *app)
         return false;
     }
 
-    dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, 4);
+    furi_delay_ms(200);
+    dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, 0);
+    furi_delay_ms(200);
+    dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, 0);
+    furi_delay_ms(100);
     dra818v_set_volume(&app->dra, 8);
+    furi_delay_ms(100);
     dra818v_set_filter(&app->dra, false, false, false);
     return true;
 }
@@ -827,4 +834,115 @@ void flipperham_rx_enter(FlipperHamApp *app)
     gui_remove_view_port(app->gui, app->rx_view_port);
     view_port_free(app->rx_view_port);
     app->rx_view_port = NULL;
+}
+
+/* ── DRA818V diagnostic ─────────────────────────────────────────── */
+
+typedef struct {
+    FlipperHamApp *app;
+    char line1[64];
+    char line2[64];
+    char line3[64];
+    char line4[64];
+    char line5[64];
+    volatile bool done;
+} DiagCtx;
+
+static void diag_draw(Canvas *canvas, void *ctx)
+{
+    DiagCtx *d = ctx;
+    canvas_clear(canvas);
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str(canvas, 0, 10, "DRA818V Diagnostic");
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str(canvas, 0, 22, d->line1);
+    canvas_draw_str(canvas, 0, 32, d->line2);
+    canvas_draw_str(canvas, 0, 42, d->line3);
+    canvas_draw_str(canvas, 0, 52, d->line4);
+    canvas_draw_str(canvas, 0, 62, d->line5);
+}
+
+static void diag_input(InputEvent *event, void *ctx)
+{
+    DiagCtx *d = ctx;
+    if(event->type == InputTypeShort && event->key == InputKeyBack)
+        d->done = true;
+}
+
+void flipperham_dra_diag(FlipperHamApp *app)
+{
+    DiagCtx d;
+    char resp[DRA818V_RESP_MAX];
+    char cmd[DRA818V_CMD_MAX];
+    ViewPort *vp;
+
+    memset(&d, 0, sizeof(d));
+    d.app = app;
+    d.done = false;
+    snprintf(d.line1, sizeof(d.line1), "Initializing UART...");
+
+    vp = view_port_alloc();
+    view_port_draw_callback_set(vp, diag_draw, &d);
+    view_port_input_callback_set(vp, diag_input, &d);
+    gui_add_view_port(app->gui, vp, GuiLayerFullscreen);
+    view_port_update(vp);
+    furi_delay_ms(200);
+
+    if(app->dra.ready) {
+        dra818v_deinit(&app->dra);
+    }
+
+    if(!dra818v_init(&app->dra)) {
+        snprintf(d.line1, sizeof(d.line1), "UART acquire FAILED");
+        snprintf(d.line5, sizeof(d.line5), "[BACK] exit");
+        view_port_update(vp);
+        while(!d.done) furi_delay_ms(50);
+        gui_remove_view_port(app->gui, vp);
+        view_port_free(vp);
+        return;
+    }
+
+    snprintf(d.line1, sizeof(d.line1), "UART OK. Handshake...");
+    view_port_update(vp);
+
+    bool hs = dra818v_send_raw(&app->dra, "AT+DMOCONNECT\r\n", resp, sizeof(resp));
+    for(uint8_t i = 0; resp[i]; i++)
+        if(resp[i] == '\r' || resp[i] == '\n') resp[i] = ' ';
+    snprintf(d.line1, sizeof(d.line1), "HS: %s [%s]", hs ? "OK" : "FAIL", resp);
+    view_port_update(vp);
+
+    furi_delay_ms(300);
+
+    snprintf(cmd, sizeof(cmd),
+        "AT+DMOSETGROUP=0,%.4f,%.4f,0000,0,0000\r\n",
+        (double)app->dra_freq, (double)app->dra_freq);
+    bool sg = dra818v_send_raw(&app->dra, cmd, resp, sizeof(resp));
+    for(uint8_t i = 0; resp[i]; i++)
+        if(resp[i] == '\r' || resp[i] == '\n') resp[i] = ' ';
+    snprintf(d.line2, sizeof(d.line2), "GRP: %s [%s]", sg ? "OK" : "FAIL", resp);
+    view_port_update(vp);
+
+    furi_delay_ms(300);
+
+    bool vol = dra818v_send_raw(&app->dra, "AT+DMOSETVOLUME=8\r\n", resp, sizeof(resp));
+    for(uint8_t i = 0; resp[i]; i++)
+        if(resp[i] == '\r' || resp[i] == '\n') resp[i] = ' ';
+    snprintf(d.line3, sizeof(d.line3), "VOL: %s [%s]", vol ? "OK" : "FAIL", resp);
+    view_port_update(vp);
+
+    furi_delay_ms(300);
+
+    bool flt = dra818v_send_raw(&app->dra, "AT+SETFILTER=0,0,0\r\n", resp, sizeof(resp));
+    for(uint8_t i = 0; resp[i]; i++)
+        if(resp[i] == '\r' || resp[i] == '\n') resp[i] = ' ';
+    snprintf(d.line4, sizeof(d.line4), "FLT: %s [%s]", flt ? "OK" : "FAIL", resp);
+
+    snprintf(d.line5, sizeof(d.line5), "[BACK] exit");
+    view_port_update(vp);
+
+    while(!d.done) furi_delay_ms(50);
+
+    dra818v_deinit(&app->dra);
+    gui_remove_view_port(app->gui, vp);
+    view_port_free(vp);
 }
