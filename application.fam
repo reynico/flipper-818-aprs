@@ -29,7 +29,7 @@ except Exception:
 
 
 App(
-    appid="aprstx",
+    appid="818aprs",
     name="818 APRS Transceiver",
     apptype=FlipperAppType.EXTERNAL,
     entry_point="flipperham_app",
