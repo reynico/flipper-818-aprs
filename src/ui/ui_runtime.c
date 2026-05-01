@@ -643,8 +643,13 @@ static bool dra818v_ensure_ready(FlipperHamApp *app)
         return false;
     }
 
+    furi_delay_ms(200);
     dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, app->dra_squelch);
+    furi_delay_ms(200);
+    dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, app->dra_squelch);
+    furi_delay_ms(100);
     dra818v_set_volume(&app->dra, app->dra_volume);
+    furi_delay_ms(100);
     dra818v_set_filter(&app->dra, false, false, false);
     return true;
 }
@@ -653,9 +658,6 @@ static void rx_frame_callback(AfskFrame *frame, void *ctx)
 {
     FlipperHamApp *app = ctx;
     AprsDecoded dec;
-
-    for(uint8_t i = 0; i < 4 && frame->dst[i]; i++)
-        app->rx_hdr[i] = (uint8_t)frame->dst[i] << 1;
 
     if(aprs_decode(frame, &dec)) {
         uint8_t slot = app->rx_msg_wr < RX_MSG_MAX ? app->rx_msg_wr : RX_MSG_MAX - 1;
@@ -706,7 +708,8 @@ static void rx_draw(Canvas *canvas, void *ctx)
 
         snprintf(
             line, sizeof(line), "HDR:%02X %02X %02X %02X",
-            app->rx_hdr[0], app->rx_hdr[1], app->rx_hdr[2], app->rx_hdr[3]);
+            app->afsk_rx.frame_buf[0], app->afsk_rx.frame_buf[1],
+            app->afsk_rx.frame_buf[2], app->afsk_rx.frame_buf[3]);
         canvas_draw_str(canvas, 0, 42, line);
 
         if(app->has_decoded) {
