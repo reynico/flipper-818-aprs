@@ -142,6 +142,7 @@ typedef struct FlipperHamApp
     AprsDecoded rx_msgs[RX_MSG_MAX];
     uint8_t rx_msg_wr;
     uint8_t rx_msg_view;
+    uint8_t rx_msg_scroll;
     uint16_t rx_count;
     bool has_decoded;
     bool rx_active;

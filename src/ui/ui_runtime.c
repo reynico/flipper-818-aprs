@@ -681,6 +681,7 @@ static void rx_frame_callback(AfskFrame *frame, void *ctx)
         app->rx_msgs[slot] = dec;
         if(app->rx_msg_wr < RX_MSG_MAX) app->rx_msg_wr++;
         app->rx_msg_view = app->rx_msg_wr - 1;
+        app->rx_msg_scroll = 0;
         app->has_decoded = true;
         app->rx_count++;
     }
@@ -774,13 +775,27 @@ static void rx_draw(Canvas *canvas, void *ctx)
 
             const char *msg = d->has_msg ? d->msg_text : d->comment;
             if(msg && msg[0]) {
-                while(*msg && y <= 62) {
-                    snprintf(line, sizeof(line), "%.21s", msg);
-                    canvas_draw_str(canvas, 0, y, line);
-                    y += 10;
-                    uint8_t adv = 21;
-                    if(strlen(msg) < adv) break;
-                    msg += adv;
+                uint8_t lines_avail = (62 - y) / 10 + 1;
+                uint8_t line_idx = 0;
+                const char *p = msg;
+                while(*p) {
+                    uint8_t n = 0;
+                    while(p[n] && n < 42) {
+                        char test[44];
+                        snprintf(test, n + 2, "%s", p);
+                        if(canvas_string_width(canvas, test) > 126)
+                            break;
+                        n++;
+                    }
+                    if(!n) n = 1;
+                    if(line_idx >= app->rx_msg_scroll &&
+                       line_idx < app->rx_msg_scroll + lines_avail) {
+                        snprintf(line, sizeof(line), "%.*s", n, p);
+                        canvas_draw_str(canvas, 0, y, line);
+                        y += 10;
+                    }
+                    line_idx++;
+                    p += n;
                 }
             }
         }
@@ -795,14 +810,23 @@ static void rx_input(InputEvent *event, void *ctx)
 
     if(event->key == InputKeyBack) {
         app->rx_active = false;
-    } else if(event->key == InputKeyUp && app->has_decoded && app->rx_msg_wr > 0) {
-        if(app->rx_msg_view > 0)
-            app->rx_msg_view--;
     } else if(event->key == InputKeyDown && app->has_decoded && app->rx_msg_wr > 0) {
+        app->rx_msg_scroll++;
+    } else if(event->key == InputKeyUp && app->has_decoded && app->rx_msg_wr > 0) {
+        if(app->rx_msg_scroll > 0)
+            app->rx_msg_scroll--;
+    } else if(event->key == InputKeyRight && app->has_decoded && app->rx_msg_wr > 0) {
         uint8_t last = app->rx_msg_wr - 1;
         if(last >= RX_MSG_MAX) last = RX_MSG_MAX - 1;
-        if(app->rx_msg_view < last)
+        if(app->rx_msg_view < last) {
             app->rx_msg_view++;
+            app->rx_msg_scroll = 0;
+        }
+    } else if(event->key == InputKeyLeft && app->has_decoded && app->rx_msg_wr > 0) {
+        if(app->rx_msg_view > 0) {
+            app->rx_msg_view--;
+            app->rx_msg_scroll = 0;
+        }
     }
 }
 
