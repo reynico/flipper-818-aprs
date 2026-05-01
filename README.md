@@ -17,7 +17,6 @@ By [LU3ARN](https://www.qrz.com/db/LU3ARN). Based on [flipper-ham](https://githu
 - DRA818V/SA818V module (or U variant for UHF)
 - A few passive components (resistors, capacitors)
 - VHF/UHF antenna appropriate for your frequency
-- External 3.3-5V power supply for the module (draws ~400mA on TX)
 - **Ham radio license** for your jurisdiction
 
 ## Wiring
@@ -36,19 +35,19 @@ A4  (PA4)  ──[10k]──[100nF]── MIC+
                                 MIC- ── GND
 
 Audio RX (module to Flipper):
-                     ┌─[10k]── 3V3
-SPK+ ──[100nF cap]──┤
-                     ├──────── A6 (PA6)
-                     └─[10k]── GND
+                      ┌─[120k]── 3V3
+SPK+ ──[100nF cap]───┤
+                      ├──────── A6 (PA6)
+                      └─[120k]── GND
                      SPK- ──── GND
 
 Power:
-External 3.3-5V ────────────── VCC
-GND (shared)    ────────────── GND
-H/L pin         ────────────── leave open (1W) or GND (0.5W)
+3V3 (Flipper)   ────────────── VCC
+GND             ────────────── GND
+H/L pin         ────────────── GND (low power)
 ```
 
-The 10k/10k voltage divider on the RX audio biases the ADC input at 1.65V. Use 10k resistors (not higher) to keep the source impedance within the ADC's specification.
+The 120k/120k voltage divider on the RX audio biases the ADC input at 1.65V.
 
 ## Build
 
@@ -111,7 +110,7 @@ Format: `CALLSIGN[-SSID],PASSCODE` — one per line. The SSID and IS passcode au
 ## Notes
 
 - Only transmit where you are legally allowed to do so
-- The DRA818V/SA818V draws significant current on TX — power it from an external supply, not the Flipper
+- The module runs from the Flipper's 3.3V line at low power (H/L tied to GND)
 - Keep antennas close for bench testing; 0.5-1W is enough for local APRS with a proper antenna
 - RX decode rate is ~100% with a clean signal and correct settings
 
