@@ -740,7 +740,14 @@ static void rx_frame_callback(AfskFrame *frame, void *ctx)
     AprsDecoded dec;
 
     if(aprs_decode(frame, &dec)) {
-        app->last_decoded = dec;
+        uint8_t slot = app->rx_msg_wr < RX_MSG_MAX ? app->rx_msg_wr : RX_MSG_MAX - 1;
+        if(app->rx_msg_wr >= RX_MSG_MAX) {
+            for(uint8_t i = 0; i < RX_MSG_MAX - 1; i++)
+                app->rx_msgs[i] = app->rx_msgs[i + 1];
+        }
+        app->rx_msgs[slot] = dec;
+        if(app->rx_msg_wr < RX_MSG_MAX) app->rx_msg_wr++;
+        app->rx_msg_view = app->rx_msg_wr - 1;
         app->has_decoded = true;
         app->rx_count++;
     }
@@ -772,22 +779,35 @@ static void rx_draw(Canvas *canvas, void *ctx)
     canvas_draw_str(canvas, 0, 22, line);
 
     if(app->has_decoded) {
-        snprintf(line, sizeof(line), "FROM: %s", app->last_decoded.src);
-        canvas_draw_str(canvas, 0, 34, line);
+        uint8_t vi = app->rx_msg_view < app->rx_msg_wr ? app->rx_msg_view : 0;
+        if(vi >= RX_MSG_MAX) vi = RX_MSG_MAX - 1;
+        AprsDecoded *d = &app->rx_msgs[vi];
+        uint8_t idx = vi + 1;
+        uint8_t total = app->rx_msg_wr;
 
-        if(app->last_decoded.has_pos) {
+        uint8_t y = 34;
+        snprintf(line, sizeof(line), "FROM: %s [%u/%u]", d->src, idx, total);
+        canvas_draw_str(canvas, 0, y, line);
+        y += 10;
+
+        if(d->has_pos) {
             snprintf(
                 line, sizeof(line), "POS: %.5f, %.5f",
-                (double)app->last_decoded.lat, (double)app->last_decoded.lon);
-            canvas_draw_str(canvas, 0, 44, line);
+                (double)d->lat, (double)d->lon);
+            canvas_draw_str(canvas, 0, y, line);
+            y += 10;
         }
 
-        if(app->last_decoded.has_msg) {
-            snprintf(line, sizeof(line), "MSG: %.26s", app->last_decoded.msg_text);
-            canvas_draw_str(canvas, 0, 54, line);
-        } else if(app->last_decoded.comment[0]) {
-            snprintf(line, sizeof(line), "MSG: %.26s", app->last_decoded.comment);
-            canvas_draw_str(canvas, 0, 54, line);
+        const char *msg = d->has_msg ? d->msg_text : d->comment;
+        if(msg && msg[0]) {
+            while(*msg && y <= 62) {
+                snprintf(line, sizeof(line), "%.21s", msg);
+                canvas_draw_str(canvas, 0, y, line);
+                y += 10;
+                uint8_t adv = 21;
+                if(strlen(msg) < adv) break;
+                msg += adv;
+            }
         }
     }
 }
@@ -800,6 +820,14 @@ static void rx_input(InputEvent *event, void *ctx)
 
     if(event->key == InputKeyBack) {
         app->rx_active = false;
+    } else if(event->key == InputKeyUp && app->has_decoded && app->rx_msg_wr > 0) {
+        if(app->rx_msg_view > 0)
+            app->rx_msg_view--;
+    } else if(event->key == InputKeyDown && app->has_decoded && app->rx_msg_wr > 0) {
+        uint8_t last = app->rx_msg_wr - 1;
+        if(last >= RX_MSG_MAX) last = RX_MSG_MAX - 1;
+        if(app->rx_msg_view < last)
+            app->rx_msg_view++;
     }
 }
 
@@ -809,6 +837,8 @@ void flipperham_rx_enter(FlipperHamApp *app)
     if(!dra818v_ensure_ready(app)) return;
 
     app->rx_count = 0;
+    app->rx_msg_wr = 0;
+    app->rx_msg_view = 0;
     app->has_decoded = false;
     app->rx_active = true;
 

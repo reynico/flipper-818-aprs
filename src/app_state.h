@@ -156,7 +156,10 @@ typedef struct FlipperHamApp
     Dra818v dra;
     AfskTx afsk_tx;
     AfskRx afsk_rx;
-    AprsDecoded last_decoded;
+#define RX_MSG_MAX 4
+    AprsDecoded rx_msgs[RX_MSG_MAX];
+    uint8_t rx_msg_wr;
+    uint8_t rx_msg_view;
     uint16_t rx_count;
     bool has_decoded;
     bool rx_active;

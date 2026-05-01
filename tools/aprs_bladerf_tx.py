@@ -130,14 +130,15 @@ def iq_to_sc16q11(iq):
     return interleaved.tobytes()
 
 
-def transmit(freq_hz, gain, count, src, ssid, payload):
+def transmit(freq_hz, gain, count, src, ssid, payload, leadin_ms):
     frame = build_ax25_frame(src, ssid, "APZFLP", 0, payload)
     stuffed = bit_stuff(frame)
     audio = generate_afsk(stuffed)
     iq = fm_modulate(audio)
 
+    leadin = np.ones(int(RF_RATE * leadin_ms / 1000), dtype=np.complex64) * 0.7
     silence = np.zeros(RF_RATE // 4, dtype=np.complex64)
-    full_iq = np.concatenate([iq, silence])
+    full_iq = np.concatenate([leadin, iq, silence])
 
     repeated = np.tile(full_iq, count)
 
@@ -188,6 +189,7 @@ if __name__ == "__main__":
     parser.add_argument("--call", default="TEST01")
     parser.add_argument("--ssid", type=int, default=1)
     parser.add_argument("--payload", default=">BladeRF APRS test")
+    parser.add_argument("--leadin", type=int, default=200)
     args = parser.parse_args()
 
-    transmit(args.freq, args.gain, args.count, args.call, args.ssid, args.payload)
+    transmit(args.freq, args.gain, args.count, args.call, args.ssid, args.payload, args.leadin)
