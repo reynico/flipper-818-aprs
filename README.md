@@ -1,60 +1,125 @@
-An experimental APRS / AX.25 transmitter for Flipper Zero. Download it from the Releases section or [click here for 1.3.17](https://github.com/yo3gnd/flipper-zero-aprs-tx/releases/download/1.3.17/aprstx-1.3.17.fap). Coming soon to the Flipper App market.
+# 818 APRS Transceiver
 
-Idea and prototype by [Richard YO3GND](https://www.qrz.com/db/YO3GND) - [Read tech post](https://yo3gnd.ro/blog/2604a--flipper-zero-aprs-tx)
+APRS transceiver for Flipper Zero using DRA818V/SA818V external VHF/UHF radio modules. Full TX and RX with Bell 202 AFSK at 1200 baud.
 
-There are plenty of audio APRS hacks that feed a handheld with audio from Flipper. This is not that. This is a SubGHZ hack that allows you to send something APRS-like using only the FZ. Decode success is still inconsistent; the signal is unconventional, imperfect, and heavily dependent on the receiver. Software seems to do fine with it (direwolf, qtmm). Some hardware decoders struggled. An UV878 works. It is malformed badly enough, losing phase information and bending the encoding to keep up with what the Flipper can do, that I am still surprised it works.
+By [LU3ARN](https://www.qrz.com/db/LU3ARN). Based on [flipper-ham](https://github.com/yo3gnd/flipper-zero-aprs-tx) by [YO3GND](https://www.qrz.com/db/YO3GND).
 
-<table>
-<tr>
-<td width="50%">
-<a href="https://www.youtube.com/watch?v=OhWlq-4IK9E"><img src="docs/th1.webp" alt="Watch demo video" width="100%"></a>
-</td>
-<td width="50%">
-<img src="docs/milestone3.webp" alt="Flipper sending an APRS message to YO3GND-2, received on a UV878" width="100%">
-</td>
-</tr>
-</table>
+## What it does
 
-This app can send:
-- APRS messages
-- status packets
-- bulletins
-- fixed position packets
+- **TX**: Sends APRS messages, status packets, bulletins, and position reports on VHF/UHF
+- **RX**: Receives and decodes APRS packets in real-time with on-screen display
+- **Supported modules**: DRA818V (VHF), DRA818U (UHF), SA818V, SA818U — any module with the standard AT command interface
+- **Preset frequencies**: 144.390 (NA), 144.800 (EU), 145.175 (AU), 144.640 (JP), 144.660 (CN), 145.525 (NZ), 432.500 (70cm)
 
-It lets you manage each packet type, keep a small destination callbook, and tune a few radio-side parameters to improve decoding. However, at its core, this is a deliberately rough FSK hack pretending to be FM, and it relies heavily on the receiver's discriminator and filters.
+## Hardware required
 
-<p align="center">
-<img src="docs/pics/Screenshot-20231015-082113.png" alt="Settings" width="25%">
-<img src="docs/pics/Screenshot-20231015-082119.png" alt="More settings" width="25%">
-</p>
+- Flipper Zero
+- DRA818V/SA818V module (or U variant for UHF)
+- A few passive components (resistors, capacitors)
+- VHF/UHF antenna appropriate for your frequency
+- External 3.3-5V power supply for the module (draws ~400mA on TX)
+- **Ham radio license** for your jurisdiction
 
-<p align="center">
-<img src="docs/pics/Screenshot-20231015-082145.png" alt="Callbook" width="25%">
-<img src="docs/pics/Screenshot-20231015-082151.png" alt="TX Screen" width="25%">
-</p>
+## Wiring
 
-## Usage
+```
+Flipper Zero GPIO              DRA818V/SA818
+============================   ================
+TX  (PB6)  ─────────────────── RXD
+RX  (PB7)  ─────────────────── TXD
+B3  (PB3)  ─────────────────── PTT  (active LOW)
+B2  (PB2)  ─────────────────── PD   (HIGH = power on)
+GND        ─────────────────── GND  (common ground)
 
-To use this, you will need to configure your handheld or a gateway, like direwolf, on an ISM frequency. If you intend to transmit on the actual APRS network, your country's licensing restrictions apply; 70cm APRS is outside ISM but still within Flipper's reach. By default, the address book contains two entries: `FL1PER-0` and one of my SSIDs, `YO3GND-12`. You can easily add more. With 100mW to work with, height matters; do not expect to hit your local gateway from indoors.
+Audio TX (Flipper to module):
+A4  (PA4)  ──[10k]──[100nF]── MIC+
+                                MIC- ── GND
 
-To reduce the chance of accidental traffic on the live APRS network, the default identity is the clearly artificial callsign `FL1PER-0`, which, luckily enough, sits in a rarely used `F` block. That makes experimental packets easier to recognize and filter.
+Audio RX (module to Flipper):
+                     ┌─[10k]── 3V3
+SPK+ ──[100nF cap]──┤
+                     ├──────── A6 (PA6)
+                     └─[10k]── GND
+                     SPK- ──── GND
 
-- If it doesn't work for you: enable debug mode, then press up/down to change deviation or left to toggle 2FSK/GFSK. Find a setting that works. It might take a few tries and different orientations for the first message to decode
+Power:
+External 3.3-5V ────────────── VCC
+GND (shared)    ────────────── GND
+H/L pin         ────────────── leave open (1W) or GND (0.5W)
+```
+
+The 10k/10k voltage divider on the RX audio biases the ADC input at 1.65V. Use 10k resistors (not higher) to keep the source impedance within the ADC's specification.
 
 ## Build
 
 ```sh
-./fbt build APPSRC=flipperham
-./fbt launch APPSRC=flipperham
+pip install ufbt
+ufbt update
+ufbt
+ufbt launch    # deploy and run on connected Flipper
 ```
 
-- application.fam will import gitver.py to get the latest revision id from git plus some metadata. This metadata will be burnt into the elf
+The app appears under **Tools** on the Flipper as **818 APRS Transceiver**.
+
+## Menu
+
+- **Send** — compose and transmit messages, positions, status, bulletins
+- **RX Listen** — live APRS packet decoder with scrollable message history
+- **Settings** — VHF frequency, APRS path, volume, squelch, repeat count, lead-in/preamble timing, debug TX/RX
+- **Callbook** — destination callsign list
+- **Ham Radio** — your callsign and SSID for TX
+- **About** — version and credits
+
+## Settings
+
+| Setting | Range | Description |
+|---------|-------|-------------|
+| VHF Freq | Presets | APRS frequency for your region |
+| APRS Path | None/WIDE1-1/WIDE2-2/etc | Digipeater path |
+| Repeat TX | 1-5 | Number of transmission repeats |
+| Lead-in | 0-1000 ms | Mark tone before preamble |
+| Preamble | 0-1000 ms | Flag bytes before data |
+| Volume | 1-8 | DRA818V audio output level |
+| Squelch | 0-8 | RX squelch threshold (0=open) |
+| Debug TX | Yes/No | Show packet details during TX |
+| Debug RX | Yes/No | Show ADC/CRC/flag stats during RX |
+
+## RX navigation
+
+- **Up/Down** — scroll within a long message
+- **Left/Right** — navigate between received messages
+- **Back** — exit RX mode
+
+Green LED flashes on successful decode, red on CRC failure.
+
+## Ham usage
+
+Create `/ext/ham/my-callsigns.txt` on the SD card:
+
+```
+LU3ARN-9,12345
+```
+
+Format: `CALLSIGN[-SSID],PASSCODE` — one per line. The SSID and IS passcode authenticate your transmissions. Select your callsign under **Ham Radio** in the menu.
+
+## How it works
+
+**TX**: The Flipper generates the AX.25 packet (addressing, bit stuffing, NRZI, CRC) and outputs the AFSK waveform as a square wave on GPIO pin A4. The DRA818V's FM modulator transmits it on the configured VHF/UHF frequency.
+
+**RX**: TIM2 hardware timer triggers ADC conversions at exactly 13200 Hz via TRGO. An ISR collects samples into a circular buffer. A worker thread runs a delay-and-multiply discriminator with IIR low-pass filtering, clock recovery, and AX.25 frame assembly. Decoded APRS packets are displayed on screen.
 
 ## Notes
 
-- This is still experimental.
-- Decode quality depends a lot on deviation, receiver, and timing.
-- Only transmit where you are legally allowed to do so.
+- Only transmit where you are legally allowed to do so
+- The DRA818V/SA818V draws significant current on TX — power it from an external supply, not the Flipper
+- Keep antennas close for bench testing; 0.5-1W is enough for local APRS with a proper antenna
+- RX decode rate is ~100% with a clean signal and correct settings
 
-## Ham Usage
-- Update `/ext/ham/my-callsigns.txt` on the SD card with one callsign per line. Each callsign may have an optional standard SSID; the SSID can be updated in the app. Each callsign must be followed by a comma and the IS passcode.
+## Credits
+
+- [YO3GND](https://github.com/yo3gnd/flipper-zero-aprs-tx) — original flipper-ham APRS TX app, AFSK waveform generator, AX.25 packet construction
+- [LU3ARN](https://github.com/reynico/flipper-818-aprs) — DRA818V integration, VHF/UHF support, RX demodulator, UI overhaul
+
+## License
+
+See [LICENSE](LICENSE) for terms.
