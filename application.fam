@@ -30,7 +30,7 @@ except Exception:
 
 App(
     appid="aprstx",
-    name="Flipper ham APRS TX",
+    name="818 APRS Transceiver",
     apptype=FlipperAppType.EXTERNAL,
     entry_point="flipperham_app",
     requires=["gui"],
@@ -61,8 +61,8 @@ App(
     fap_icon="flipperham.png",
     fap_category="Tools",
     fap_version="1.3.17",
-    fap_author="@yo3gnd",
-    fap_weburl="https://github.com/reynico/flipper-zero-aprs-tx/",
-    fap_description="APRS VHF transceiver for Flipper Zero with DRA818V",
+    fap_author="@lu3arn",
+    fap_weburl="https://github.com/reynico/flipper-818-aprs/",
+    fap_description="APRS VHF/UHF transceiver for Flipper Zero with DRA818/SA818",
     targets=["f7"],
 )

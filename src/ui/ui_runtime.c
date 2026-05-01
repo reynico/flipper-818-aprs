@@ -331,7 +331,7 @@ FlipperHamApp *flipperham_app_alloc(void)
     if (app->ham_ok)
         submenu_add_item(app->submenu, "Ham Radio", FlipperHamMenuIndexHam,
                          flipperham_menu_callback, app);
-    submenu_add_item(app->submenu, "About Flipper ham", FlipperHamMenuIndexReadme,
+    submenu_add_item(app->submenu, "About", FlipperHamMenuIndexReadme,
                      flipperham_menu_callback, app);
 
     submenu_add_item(app->send_menu, "Message", FlipperHamSendIndexMessage,
@@ -356,11 +356,14 @@ FlipperHamApp *flipperham_app_alloc(void)
 
     snprintf(
         app->readme_h, sizeof(app->readme_h),
-        "Version: %s\nCommit %s\nBuilt: %s\nHost: %s\n"
-        "APRS experimental transmitter for Flipper. Don't transmit where you shouldn't. Uses FSK "
-        "as a weak substitute for FM. Works, sometimes.\n\nI'm quite interested on what kind of "
-        "hardware and with what parameters you got decodes.\n\nReports are really appreciated. Contact "
-        "me at:\n\nwww.yo3gnd.ro\nyo3gnd@gmail.com\ngithub.com/yo3gnd\ninstagram: @yo3gnd\ntiktok: @yo3ngd\nyoutube.com/@yo3gnd\n\n",
+        "818 APRS Transceiver\n"
+        "by LU3ARN\n\n"
+        "Version: %s\nCommit %s\nBuilt: %s\nHost: %s\n\n"
+        "APRS transceiver for Flipper Zero using DRA818/SA818 VHF/UHF modules. "
+        "Supports TX and RX with Bell 202 AFSK at 1200 baud.\n\n"
+        "Based on flipper-ham by YO3GND\ngithub.com/yo3gnd\n\n"
+        "Source code:\ngithub.com/reynico/flipper-818-aprs\n\n"
+        "Ham radio license required for transmission.\n",
         APP_VER_TEXT, APP_BUILD_COMMIT, APP_BUILD_TIME, APP_BUILD_HOST);
 
     widget_add_text_scroll_element(
