@@ -102,7 +102,6 @@ Format: `CALLSIGN[-SSID],PASSCODE` — one per line. The SSID and IS passcode au
 
 - Only transmit where you are legally allowed to do so
 - The module runs from the Flipper's 3.3V line at low power (H/L tied to GND)
-- Keep antennas close for bench testing; 0.5-1W is enough for local APRS with a proper antenna
 - RX decode rate is ~100% with a clean signal and correct settings
 
 ## Credits
