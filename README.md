@@ -60,15 +60,6 @@ ufbt launch    # deploy and run on connected Flipper
 
 The app appears under **Tools** on the Flipper as **818 APRS Transceiver**.
 
-## Menu
-
-- **Send** — compose and transmit messages, positions, status, bulletins
-- **RX Listen** — live APRS packet decoder with scrollable message history
-- **Settings** — VHF frequency, APRS path, volume, squelch, repeat count, lead-in/preamble timing, debug TX/RX
-- **Callbook** — destination callsign list
-- **Ham Radio** — your callsign and SSID for TX
-- **About** — version and credits
-
 ## Settings
 
 | Setting | Range | Description |
