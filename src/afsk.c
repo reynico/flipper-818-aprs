@@ -180,6 +180,7 @@ static int32_t afsk_rx_worker(void *ctx)
     uint32_t sample_n = 0;
     bool carrier_present = false;
     uint32_t silence_count = 0;
+    uint32_t consecutive_above = 0;
 
     while(rx->running) {
         uint32_t flags = furi_thread_flags_wait(
@@ -224,9 +225,12 @@ static int32_t afsk_rx_worker(void *ctx)
 
             float mag = lpf < 0 ? -lpf : lpf;
             if(mag > AFSK_NOISE_FLOOR) {
-                carrier_present = true;
+                consecutive_above++;
+                if(consecutive_above > 33)
+                    carrier_present = true;
                 silence_count = 0;
             } else {
+                consecutive_above = 0;
                 silence_count++;
                 if(silence_count > AFSK_SAMPLES_PER_BIT * 20) {
                     carrier_present = false;
