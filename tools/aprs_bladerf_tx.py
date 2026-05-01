@@ -92,18 +92,21 @@ def generate_afsk(stuffed_bits, preamble_flags=40):
     freq = MARK_HZ
     is_mark = True
     audio = []
+    pos = 0.0
 
     for bit in all_bits:
         if bit == 0:
             is_mark = not is_mark
             freq = MARK_HZ if is_mark else SPACE_HZ
 
-        n = int(round(samples_per_bit))
+        next_pos = pos + samples_per_bit
+        n = int(round(next_pos)) - int(round(pos))
         for _ in range(n):
             audio.append(np.sin(phase))
             phase += 2.0 * np.pi * freq / AUDIO_RATE
             if phase > 2.0 * np.pi:
                 phase -= 2.0 * np.pi
+        pos = next_pos
 
     return np.array(audio, dtype=np.float32)
 

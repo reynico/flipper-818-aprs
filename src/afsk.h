@@ -45,8 +45,6 @@ typedef struct {
     volatile uint16_t wr;
     uint16_t rd;
 
-    int16_t block[AFSK_SAMPLES_PER_BIT];
-
     bool last_tone;
     AfskRxState state;
     uint8_t ones_count;
@@ -61,7 +59,10 @@ typedef struct {
     FuriHalAdcHandle *adc;
     volatile bool running;
     FuriThread *worker;
+    FuriThreadId worker_id;
 
+    volatile uint32_t dbg_adc_timeout;
+    volatile uint32_t dbg_overruns;
     volatile int16_t dbg_adc_min;
     volatile int16_t dbg_adc_max;
     volatile float dbg_mark;
