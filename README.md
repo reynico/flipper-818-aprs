@@ -64,7 +64,7 @@ The app appears under **Tools** on the Flipper as **818 APRS Transceiver**.
 
 | Setting | Range | Description |
 |---------|-------|-------------|
-| VHF Freq | Presets | APRS frequency for your region |
+| Freq | Presets | APRS frequency for your region |
 | APRS Path | None/WIDE1-1/WIDE2-2/etc | Digipeater path |
 | Repeat TX | 1-5 | Number of transmission repeats |
 | Lead-in | 0-1000 ms | Mark tone before preamble |

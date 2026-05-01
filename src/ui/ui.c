@@ -804,7 +804,7 @@ void settings_menu_build(FlipperHamApp *app)
         app->aprs_path_index = 0;
 
     it = variable_item_list_add(
-        app->settings_menu, "VHF Freq", VHF_FREQ_COUNT, vhf_freq_change, app);
+        app->settings_menu, "Freq", VHF_FREQ_COUNT, vhf_freq_change, app);
     variable_item_set_current_value_index(it, app->dra_freq_index);
     variable_item_set_current_value_text(it, vhf_labels[app->dra_freq_index]);
 
