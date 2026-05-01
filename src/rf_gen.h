@@ -16,7 +16,7 @@ typedef struct
     uint16_t space_hz;
 } FlipperHamModemProfile;
 
-#define WAVE_N 28672
+#define WAVE_N 8192
 
 extern const FlipperHamModemProfile flipperham_modem_profiles[2];
 
