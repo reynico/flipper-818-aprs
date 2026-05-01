@@ -717,7 +717,7 @@ static void rx_draw(Canvas *canvas, void *ctx)
     if(app->rx_debug) {
         snprintf(line, sizeof(line), "RX %.4f MHz", (double)app->dra_freq);
     } else {
-        snprintf(line, sizeof(line), "RX %.4f  PKT:%u", (double)app->dra_freq, app->rx_count);
+        snprintf(line, sizeof(line), "RX %.4f PKTs:%u", (double)app->dra_freq, app->rx_count);
     }
     canvas_draw_str(canvas, 0, 10, line);
 
