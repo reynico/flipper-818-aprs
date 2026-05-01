@@ -323,7 +323,7 @@ FlipperHamApp *flipperham_app_alloc(void)
 
     submenu_add_item(app->submenu, "Send", FlipperHamMenuIndexSend, flipperham_menu_callback, app);
     submenu_add_item(
-        app->submenu, "RX Listen", FlipperHamMenuIndexRx, flipperham_menu_callback, app);
+        app->submenu, "Receive", FlipperHamMenuIndexRx, flipperham_menu_callback, app);
     submenu_add_item(app->submenu, "Settings", FlipperHamMenuIndexSettings,
                      flipperham_menu_callback, app);
     submenu_add_item(app->submenu, "Callbook", FlipperHamMenuIndexCallbook,
