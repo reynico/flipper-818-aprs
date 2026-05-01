@@ -143,6 +143,8 @@ typedef struct FlipperHamApp
     uint8_t rx_msg_wr;
     uint8_t rx_msg_view;
     uint8_t rx_msg_scroll;
+    uint8_t rx_msg_total_lines;
+    uint8_t rx_msg_visible_lines;
     uint16_t rx_count;
     bool has_decoded;
     bool rx_active;
