@@ -751,13 +751,10 @@ static void rx_draw(Canvas *canvas, void *ctx)
     FlipperHamApp *app = ctx;
     char line[44];
 
-    (void)app->afsk_rx.dbg_adc_min;
-    (void)app->afsk_rx.dbg_adc_max;
-    (void)app->afsk_rx.dbg_mark;
-    (void)app->afsk_rx.dbg_space;
-    (void)app->afsk_rx.dbg_flags;
-    (void)app->afsk_rx.dbg_crc_fail;
-    (void)app->afsk_rx.dbg_last_frame_len;
+    snprintf(line, sizeof(line), "%d%d%.0f%.0f%lu",
+        app->afsk_rx.dbg_adc_min, app->afsk_rx.dbg_adc_max,
+        (double)app->afsk_rx.dbg_mark, (double)app->afsk_rx.dbg_space,
+        (unsigned long)app->afsk_rx.dbg_flags);
 
     canvas_clear(canvas);
 
@@ -767,34 +764,32 @@ static void rx_draw(Canvas *canvas, void *ctx)
 
     canvas_set_font(canvas, FontSecondary);
 
-    if(!app->has_decoded) {
-        snprintf(line, sizeof(line), "Packets: %u", app->rx_count);
-        canvas_draw_str(canvas, 0, 28, line);
-        canvas_draw_str(canvas, 0, 44, "Listening...");
-    } else {
-        snprintf(line, sizeof(line), "Packets: %u", app->rx_count);
-        canvas_draw_str(canvas, 0, 22, line);
+    snprintf(
+        line, sizeof(line), "OK:%u CRC:%lu LEN:%u",
+        app->rx_count,
+        (unsigned long)app->afsk_rx.dbg_crc_fail,
+        app->afsk_rx.dbg_last_frame_len);
+    canvas_draw_str(canvas, 0, 22, line);
 
-        snprintf(line, sizeof(line), "From: %s", app->last_decoded.src);
-        canvas_draw_str(canvas, 0, 32, line);
+    if(app->has_decoded) {
+        snprintf(line, sizeof(line), "FROM: %s", app->last_decoded.src);
+        canvas_draw_str(canvas, 0, 34, line);
 
         if(app->last_decoded.has_pos) {
             snprintf(
-                line, sizeof(line), "%.5f, %.5f",
+                line, sizeof(line), "POS: %.5f, %.5f",
                 (double)app->last_decoded.lat, (double)app->last_decoded.lon);
-            canvas_draw_str(canvas, 0, 42, line);
+            canvas_draw_str(canvas, 0, 44, line);
         }
 
         if(app->last_decoded.has_msg) {
-            snprintf(line, sizeof(line), "> %.28s", app->last_decoded.msg_text);
-            canvas_draw_str(canvas, 0, 52, line);
+            snprintf(line, sizeof(line), "MSG: %.26s", app->last_decoded.msg_text);
+            canvas_draw_str(canvas, 0, 54, line);
         } else if(app->last_decoded.comment[0]) {
-            snprintf(line, sizeof(line), "> %.28s", app->last_decoded.comment);
-            canvas_draw_str(canvas, 0, 52, line);
+            snprintf(line, sizeof(line), "MSG: %.26s", app->last_decoded.comment);
+            canvas_draw_str(canvas, 0, 54, line);
         }
     }
-
-    canvas_draw_str(canvas, 96, 63, "Back");
 }
 
 static void rx_input(InputEvent *event, void *ctx)
