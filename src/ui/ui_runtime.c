@@ -676,6 +676,11 @@ static void rx_frame_callback(AfskFrame *frame, void *ctx)
         app->rx_led_tick = furi_get_tick();
         furi_hal_light_set(LightGreen, 255);
         furi_hal_light_set(LightRed, 0);
+        NotificationApp *notify = furi_record_open(RECORD_NOTIFICATION);
+        notification_message(notify, &sequence_display_backlight_on);
+        notification_message(notify, &sequence_single_vibro);
+        notification_message(notify, &sequence_success);
+        furi_record_close(RECORD_NOTIFICATION);
         uint8_t slot = app->rx_msg_wr < RX_MSG_MAX ? app->rx_msg_wr : RX_MSG_MAX - 1;
         if(app->rx_msg_wr >= RX_MSG_MAX) {
             for(uint8_t i = 0; i < RX_MSG_MAX - 1; i++)
