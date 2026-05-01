@@ -149,5 +149,7 @@ typedef struct FlipperHamApp
     uint8_t dra_freq_index;
     uint8_t dra_volume;
     uint8_t dra_squelch;
+    bool rx_debug;
+    uint8_t rx_hdr[4];
     ViewPort *rx_view_port;
 } FlipperHamApp;

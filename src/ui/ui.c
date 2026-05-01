@@ -19,6 +19,7 @@ static void ham_morse_play(FlipperHamApp *app);
 static void c2(void *context, uint32_t index);
 static void aprs_path_change(VariableItem *item);
 static void debug_change(VariableItem *item);
+static void debug_rx_change(VariableItem *item);
 static void vhf_freq_change(VariableItem *item);
 static void volume_change(VariableItem *item);
 static void squelch_change(VariableItem *item);
@@ -841,9 +842,13 @@ void settings_menu_build(FlipperHamApp *app)
     snprintf(a, sizeof(a), "%u", app->dra_squelch);
     variable_item_set_current_value_text(it, a);
 
-    it = variable_item_list_add(app->settings_menu, "Debug", 2, debug_change, app);
+    it = variable_item_list_add(app->settings_menu, "Debug TX", 2, debug_change, app);
     variable_item_set_current_value_index(it, app->debug_tx ? 1 : 0);
     variable_item_set_current_value_text(it, app->debug_tx ? "Yes" : "No");
+
+    it = variable_item_list_add(app->settings_menu, "Debug RX", 2, debug_rx_change, app);
+    variable_item_set_current_value_index(it, app->rx_debug ? 1 : 0);
+    variable_item_set_current_value_text(it, app->rx_debug ? "Yes" : "No");
 }
 
 void message_menu_build(FlipperHamApp *app)
@@ -1054,6 +1059,14 @@ static void debug_change(VariableItem *item)
     app->debug_tx = variable_item_get_current_value_index(item) ? 1 : 0;
     variable_item_set_current_value_text(item, app->debug_tx ? "Yes" : "No");
     cfgsave(app);
+}
+
+static void debug_rx_change(VariableItem *item)
+{
+    FlipperHamApp *app = variable_item_get_context(item);
+
+    app->rx_debug = variable_item_get_current_value_index(item) ? true : false;
+    variable_item_set_current_value_text(item, app->rx_debug ? "Yes" : "No");
 }
 
 static void vhf_freq_change(VariableItem *item)

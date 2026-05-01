@@ -300,6 +300,7 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->dra_freq_index = 0;
     app->dra_volume = 8;
     app->dra_squelch = 4;
+    app->rx_debug = true;
     app->has_decoded = false;
     app->rx_active = false;
     app->rx_count = 0;
@@ -653,6 +654,9 @@ static void rx_frame_callback(AfskFrame *frame, void *ctx)
     FlipperHamApp *app = ctx;
     AprsDecoded dec;
 
+    for(uint8_t i = 0; i < 4 && frame->dst[i]; i++)
+        app->rx_hdr[i] = (uint8_t)frame->dst[i] << 1;
+
     if(aprs_decode(frame, &dec)) {
         uint8_t slot = app->rx_msg_wr < RX_MSG_MAX ? app->rx_msg_wr : RX_MSG_MAX - 1;
         if(app->rx_msg_wr >= RX_MSG_MAX) {
@@ -685,42 +689,68 @@ static void rx_draw(Canvas *canvas, void *ctx)
 
     canvas_set_font(canvas, FontSecondary);
 
-    snprintf(
-        line, sizeof(line), "OK:%u CRC:%lu LEN:%u",
-        app->rx_count,
-        (unsigned long)app->afsk_rx.dbg_crc_fail,
-        app->afsk_rx.dbg_last_frame_len);
-    canvas_draw_str(canvas, 0, 22, line);
+    if(app->rx_debug) {
+        snprintf(
+            line, sizeof(line), "ADC:%d..%d V:%u S:%u",
+            app->afsk_rx.dbg_adc_min, app->afsk_rx.dbg_adc_max,
+            app->dra_volume, app->dra_squelch);
+        canvas_draw_str(canvas, 0, 22, line);
 
-    if(app->has_decoded) {
-        uint8_t vi = app->rx_msg_view < app->rx_msg_wr ? app->rx_msg_view : 0;
-        if(vi >= RX_MSG_MAX) vi = RX_MSG_MAX - 1;
-        AprsDecoded *d = &app->rx_msgs[vi];
-        uint8_t idx = vi + 1;
-        uint8_t total = app->rx_msg_wr;
+        snprintf(
+            line, sizeof(line), "OK:%u CRC:%lu LEN:%u FL:%lu",
+            app->rx_count,
+            (unsigned long)app->afsk_rx.dbg_crc_fail,
+            app->afsk_rx.dbg_last_frame_len,
+            (unsigned long)app->afsk_rx.dbg_flags);
+        canvas_draw_str(canvas, 0, 32, line);
 
-        uint8_t y = 34;
-        snprintf(line, sizeof(line), "FROM: %s [%u/%u]", d->src, idx, total);
-        canvas_draw_str(canvas, 0, y, line);
-        y += 10;
+        snprintf(
+            line, sizeof(line), "HDR:%02X %02X %02X %02X",
+            app->rx_hdr[0], app->rx_hdr[1], app->rx_hdr[2], app->rx_hdr[3]);
+        canvas_draw_str(canvas, 0, 42, line);
 
-        if(d->has_pos) {
-            snprintf(
-                line, sizeof(line), "POS: %.5f, %.5f",
-                (double)d->lat, (double)d->lon);
+        if(app->has_decoded) {
+            uint8_t vi = app->rx_msg_view < app->rx_msg_wr ? app->rx_msg_view : 0;
+            if(vi >= RX_MSG_MAX) vi = RX_MSG_MAX - 1;
+            AprsDecoded *d = &app->rx_msgs[vi];
+            snprintf(line, sizeof(line), "%s: %.20s", d->src,
+                d->has_msg ? d->msg_text : d->comment);
+            canvas_draw_str(canvas, 0, 52, line);
+        }
+    } else {
+        snprintf(line, sizeof(line), "Packets: %u", app->rx_count);
+        canvas_draw_str(canvas, 0, 22, line);
+
+        if(app->has_decoded) {
+            uint8_t vi = app->rx_msg_view < app->rx_msg_wr ? app->rx_msg_view : 0;
+            if(vi >= RX_MSG_MAX) vi = RX_MSG_MAX - 1;
+            AprsDecoded *d = &app->rx_msgs[vi];
+            uint8_t idx = vi + 1;
+            uint8_t total = app->rx_msg_wr;
+
+            uint8_t y = 34;
+            snprintf(line, sizeof(line), "FROM: %s [%u/%u]", d->src, idx, total);
             canvas_draw_str(canvas, 0, y, line);
             y += 10;
-        }
 
-        const char *msg = d->has_msg ? d->msg_text : d->comment;
-        if(msg && msg[0]) {
-            while(*msg && y <= 62) {
-                snprintf(line, sizeof(line), "%.21s", msg);
+            if(d->has_pos) {
+                snprintf(
+                    line, sizeof(line), "POS: %.5f, %.5f",
+                    (double)d->lat, (double)d->lon);
                 canvas_draw_str(canvas, 0, y, line);
                 y += 10;
-                uint8_t adv = 21;
-                if(strlen(msg) < adv) break;
-                msg += adv;
+            }
+
+            const char *msg = d->has_msg ? d->msg_text : d->comment;
+            if(msg && msg[0]) {
+                while(*msg && y <= 62) {
+                    snprintf(line, sizeof(line), "%.21s", msg);
+                    canvas_draw_str(canvas, 0, y, line);
+                    y += 10;
+                    uint8_t adv = 21;
+                    if(strlen(msg) < adv) break;
+                    msg += adv;
+                }
             }
         }
     }
