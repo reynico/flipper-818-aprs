@@ -1,3 +1,6 @@
 __pycache__/
 *.pyc
 docs/
+.vscode/
+dist/
+.DS_Store
