@@ -650,7 +650,7 @@ static bool dra818v_ensure_ready(FlipperHamApp *app)
     furi_delay_ms(100);
     dra818v_set_volume(&app->dra, app->dra_volume);
     furi_delay_ms(100);
-    dra818v_set_filter(&app->dra, false, false, false);
+    dra818v_set_filter(&app->dra, true, true, true);
     return true;
 }
 
