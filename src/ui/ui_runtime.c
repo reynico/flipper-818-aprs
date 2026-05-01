@@ -301,6 +301,7 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->dra_volume = 8;
     app->dra_squelch = 4;
     app->rx_debug = true;
+    app->rx_notify = true;
     app->has_decoded = false;
     app->rx_active = false;
     app->rx_count = 0;
@@ -678,8 +679,10 @@ static void rx_frame_callback(AfskFrame *frame, void *ctx)
         furi_hal_light_set(LightRed, 0);
         NotificationApp *notify = furi_record_open(RECORD_NOTIFICATION);
         notification_message(notify, &sequence_display_backlight_on);
-        notification_message(notify, &sequence_single_vibro);
-        notification_message(notify, &sequence_success);
+        if(app->rx_notify) {
+            notification_message(notify, &sequence_single_vibro);
+            notification_message(notify, &sequence_success);
+        }
         furi_record_close(RECORD_NOTIFICATION);
         uint8_t slot = app->rx_msg_wr < RX_MSG_MAX ? app->rx_msg_wr : RX_MSG_MAX - 1;
         if(app->rx_msg_wr >= RX_MSG_MAX) {

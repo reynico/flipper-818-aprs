@@ -98,6 +98,7 @@ void cfgsave(FlipperHamApp *app)
     c->aprs_path_index = app->aprs_path_index;
     c->debug_tx = app->debug_tx;
     c->debug_rx = app->rx_debug;
+    c->rx_notify = app->rx_notify;
     c->dra_freq_index = app->dra_freq_index;
     c->dra_volume = app->dra_volume;
     c->dra_squelch = app->dra_squelch;
@@ -200,6 +201,7 @@ void cfgload(FlipperHamApp *app)
     app->aprs_path_index = c->aprs_path_index;
     app->debug_tx = c->debug_tx ? true : false;
     app->rx_debug = c->debug_rx ? true : false;
+    app->rx_notify = c->rx_notify ? true : false;
     app->dra_freq_index = c->dra_freq_index;
     app->dra_volume = c->dra_volume;
     app->dra_squelch = c->dra_squelch;

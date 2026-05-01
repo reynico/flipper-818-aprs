@@ -54,6 +54,7 @@ typedef struct
     char aprs_path_edit[APRS_PATH_LEN];
     uint8_t debug_tx;
     uint8_t debug_rx;
+    uint8_t rx_notify;
 } FlipperHamCfg;
 
 enum
