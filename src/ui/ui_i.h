@@ -17,8 +17,6 @@ uint32_t flipperham_message_edit_exit_callback(void *context);
 uint32_t flipperham_position_exit_callback(void *context);
 uint32_t flipperham_ssid_exit_callback(void *context);
 uint32_t flipperham_call_exit_callback(void *context);
-uint32_t flipperham_freq_exit_callback(void *context);
-uint32_t flipperham_freq_edit_exit_callback(void *context);
 uint32_t flipperham_pos_edit_exit_callback(void *context);
 uint32_t flipperham_pos_action_exit_callback(void *context);
 uint32_t flipperham_ham_exit_callback(void *context);
@@ -43,32 +41,21 @@ void ssid_menu_build(FlipperHamApp *app);
 void settings_menu_build(FlipperHamApp *app);
 void ham_menu_build(FlipperHamApp *app);
 void ham_tx_menu_build(FlipperHamApp *app);
-void freq_menu_build(FlipperHamApp *app);
-void freq_edit_menu_build(FlipperHamApp *app);
 void pos_edit_menu_build(FlipperHamApp *app);
 
 void ssidfix(FlipperHamApp *app);
 void ssid_change(VariableItem *item);
-void baud_change(VariableItem *item);
-void profile_change(VariableItem *item);
-void deviation_change(VariableItem *item);
 void repeat_change(VariableItem *item);
 void leadin_change(VariableItem *item);
 void preamble_change(VariableItem *item);
 void ham_call_change(VariableItem *item);
 void ham_ssid_change(VariableItem *item);
-void freq_change(VariableItem *item);
 
 void ssid_enter(void *context, uint32_t index);
 void settings_enter(void *context, uint32_t index);
 void ham_enter(void *context, uint32_t index);
 void ham_tx_enter(void *context, uint32_t index);
-void freq_edit_enter(void *context, uint32_t index);
 void pos_edit_enter(void *context, uint32_t index);
-
-uint32_t freq_step(uint32_t a, int8_t d);
-void freq_show(char *o, uint16_t n, uint32_t a);
-void fsh2(char *o, uint16_t n, uint32_t a);
 
 void flipperham_bulletin_callback(void *context, uint32_t index);
 void bulletin_pick(void *context, InputType input_type, uint32_t index);
@@ -81,13 +68,11 @@ void position_pick(void *context, InputType input_type, uint32_t index);
 void call_pick(void *context, InputType input_type, uint32_t index);
 void cl(void *context, uint32_t index);
 void cb(void *context, uint32_t index);
-void freq_pick(void *context, InputType input_type, uint32_t index);
 void bulletin_save(void *context);
 void status_save(void *context);
 void message_save(void *context);
 void position_save(void *context);
 void call_save(void *context);
-void freq_save(void *context);
 
 void flipperham_draw_callback(Canvas *canvas, void *context);
 void flipperham_status_view_alloc(FlipperHamApp *app);

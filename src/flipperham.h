@@ -8,31 +8,28 @@
 #define POS_LEN 16
 #define CALL_LEN 10
 #define APRS_PATH_LEN 9
-#define CALL_N 32
-#define FREQ_N 4
+#define CALL_N 16
 #define HAM_N 8
 
-#define CARRIER_HZ 433250000UL
 #define MY_CALL "FL1PER"
 #define MY_TOCALL "APZFLP"
 
 #define CFG_DIR "/ext/apps_data/aprstx"
-#define CFG_FILE "/ext/apps_data/aprstx/cfg.bin"
+#define CFG_FILE "/ext/apps_data/aprstx/cfg2.bin"
 #define CALLBOOK_DIR "/ext/ham"
 #define CALLBOOK_FILE "/ext/ham/callbook.txt"
 #define MY_CALLS_FILE "/ext/ham/my-callsigns.txt"
 
 typedef struct
 {
-    uint8_t encoding_index;
-    uint8_t rf_mod;
-    uint8_t rf_dev;
-    uint8_t tx_freq_index;
     uint8_t dst_ssid;
     uint8_t repeat_n;
     uint8_t ham_index;
     uint16_t leadin_ms;
     uint16_t preamble_ms;
+    uint8_t dra_freq_index;
+    uint8_t dra_volume;
+    uint8_t dra_squelch;
 
     char bulletin[TXT_N][TXT_LEN];
     char status[TXT_N][TXT_LEN];
@@ -41,21 +38,18 @@ typedef struct
     char pos_name[TXT_N][TXT_LEN];
     char pos_lat[TXT_N][POS_LEN];
     char pos_lon[TXT_N][POS_LEN];
-    uint32_t freq[FREQ_N];
 
     uint8_t bulletin_used[TXT_N];
     uint8_t status_used[TXT_N];
     uint8_t message_used[TXT_N];
     uint8_t calls_used[CALL_N];
     uint8_t pos_used[TXT_N];
-    uint8_t freq_used[FREQ_N];
 
     uint8_t bulletin_n;
     uint8_t status_n;
     uint8_t message_n;
     uint8_t calls_n;
     uint8_t pos_n;
-    uint8_t freq_n;
     uint8_t aprs_path_index;
     char aprs_path_edit[APRS_PATH_LEN];
     uint8_t debug_tx;
@@ -76,8 +70,6 @@ enum
     FlipperHamViewBook,
     FlipperHamViewC2,
     FlipperHamViewTextInput,
-    FlipperHamViewFreq,
-    FlipperHamViewFreqEdit,
     FlipperHamViewPosEdit,
     FlipperHamViewPosAction,
     FlipperHamViewHam,
@@ -106,15 +98,14 @@ enum
 
 enum
 {
-    FlipperHamSettingsIndexFreq = 0,
-    FlipperHamSettingsIndexBaud,
+    FlipperHamSettingsIndexVhfFreq = 0,
     FlipperHamSettingsIndexAprsPath,
-    FlipperHamSettingsIndexProfile,
-    FlipperHamSettingsIndexDeviation,
+    FlipperHamSettingsIndexCustomPath,
     FlipperHamSettingsIndexRepeat,
     FlipperHamSettingsIndexLeadin,
     FlipperHamSettingsIndexPreamble,
-    FlipperHamSettingsIndexCustomPath,
+    FlipperHamSettingsIndexVolume,
+    FlipperHamSettingsIndexSquelch,
     FlipperHamSettingsIndexDebug,
 };
 
@@ -167,12 +158,6 @@ enum
     FlipperHamC2IndexEdit = 0,
     FlipperHamC2IndexDelete,
     FlipperHamC2IndexCopy,
-};
-
-enum
-{
-    FlipperHamFreqIndexAdd = 0,
-    FlipperHamFreqIndexBase = 600,
 };
 
 int32_t flipperham_app(void *p);

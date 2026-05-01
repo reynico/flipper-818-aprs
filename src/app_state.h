@@ -30,12 +30,10 @@ typedef struct FlipperHamApp
     Submenu *call_menu;
     Submenu *book_menu;
     Submenu *c2_menu;
-    Submenu *freq_menu;
     VariableItemList *settings_menu;
     VariableItemList *ham_menu;
     VariableItemList *ham_tx_menu;
     VariableItemList *ssid_menu;
-    VariableItemList *freq_edit_menu;
     VariableItemList *pos_edit_menu;
     TextInput *text_input;
     Widget *readme_widget;
@@ -52,11 +50,6 @@ typedef struct FlipperHamApp
     bool show_done;
     bool send_requested;
     bool ham_ok;
-    uint8_t encoding_index;
-    uint8_t rf_mod;
-    uint8_t rf_dev;
-    uint8_t dbg_mod;
-    uint8_t dbg_dev;
     uint8_t repeat_n;
     uint16_t leadin_ms;
     uint16_t preamble_ms;
@@ -91,13 +84,11 @@ typedef struct FlipperHamApp
     char pos_name[TXT_N][TXT_LEN];
     char pos_lat[TXT_N][POS_LEN];
     char pos_lon[TXT_N][POS_LEN];
-    uint32_t freq[FREQ_N];
     uint8_t bulletin_used[TXT_N];
     uint8_t status_used[TXT_N];
     uint8_t message_used[TXT_N];
     uint8_t calls_used[CALL_N];
     uint8_t pos_used[TXT_N];
-    uint8_t freq_used[FREQ_N];
     uint8_t ham_ssid[HAM_N];
     bool ham_has_ssid[HAM_N];
     uint16_t ham_pass[HAM_N];
@@ -107,9 +98,6 @@ typedef struct FlipperHamApp
     uint8_t calls_n;
     uint8_t ham_n;
     uint8_t pos_n;
-    uint8_t freq_n;
-    uint8_t tx_freq_index;
-    bool f_bad;
     uint8_t tx_msg_index;
     uint8_t tx_type;
     uint8_t bulletin_index;
@@ -123,7 +111,6 @@ typedef struct FlipperHamApp
     uint8_t book_call_index;
     uint8_t ham_index;
     uint8_t ham_tx_index;
-    uint8_t freq_index;
     uint16_t bulletin_sel;
     uint16_t status_sel;
     uint16_t message_sel;
@@ -131,7 +118,6 @@ typedef struct FlipperHamApp
     uint16_t call_sel;
     uint16_t book_sel;
     uint16_t book_action_sel;
-    uint16_t freq_sel;
     uint16_t ham_sel;
     uint16_t ham_tx_sel;
     uint8_t text_mode;
@@ -143,16 +129,12 @@ typedef struct FlipperHamApp
     char p_lat_edit[POS_LEN];
     char p_lon_edit[POS_LEN];
     char c_edit[CALL_LEN];
-    char f_edit[16];
     char aprs_path_edit[APRS_PATH_LEN];
     char c2_h[24];
     char readme_h[640];
     bool debug_tx;
-    char freq_s[FREQ_N][16];
     uint8_t aprs_path_index;
-    uint32_t freq_edit_hz;
 
-    bool dra_mode;
     Dra818v dra;
     AfskTx afsk_tx;
     AfskRx afsk_rx;
@@ -165,5 +147,7 @@ typedef struct FlipperHamApp
     bool rx_active;
     float dra_freq;
     uint8_t dra_freq_index;
+    uint8_t dra_volume;
+    uint8_t dra_squelch;
     ViewPort *rx_view_port;
 } FlipperHamApp;

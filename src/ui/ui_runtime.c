@@ -15,32 +15,7 @@
 #include <string.h>
 
 static void status_input(InputEvent *event, void *context);
-static void dbgkey(FlipperHamApp *app, InputKey key);
 static bool dra818v_ensure_ready(FlipperHamApp *app);
-
-static void dbgkey(FlipperHamApp *app, InputKey key)
-{
-    if (!app) return;
-
-    if (key == InputKeyLeft)
-    {
-        app->dbg_mod = app->dbg_mod ? 0 : 1;
-        return;
-    }
-
-    if (key == InputKeyUp)
-    {
-        if (app->dbg_dev < 8) app->dbg_dev++; else app->dbg_dev = 0;
-        return;
-    }
-
-    if (key == InputKeyDown)
-    {
-        if (app->dbg_dev > 0) app->dbg_dev--; else app->dbg_dev = 8;
-    }
-
-
-}
 
 void flipperham_status_view_alloc(FlipperHamApp *app)
 {
@@ -79,8 +54,6 @@ void flipperham_menu_free(FlipperHamApp *app)
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewCall);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewBook);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewC2);
-        view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewFreq);
-        view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewFreqEdit);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewPosEdit);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewPosAction);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewSsid);
@@ -176,22 +149,10 @@ void flipperham_menu_free(FlipperHamApp *app)
         app->readme_widget = NULL;
     }
 
-    if (app->freq_menu)
-    {
-        submenu_free(app->freq_menu);
-        app->freq_menu = NULL;
-    }
-
     if (app->c2_menu)
     {
         submenu_free(app->c2_menu);
         app->c2_menu = NULL;
-    }
-
-    if (app->freq_edit_menu)
-    {
-        variable_item_list_free(app->freq_edit_menu);
-        app->freq_edit_menu = NULL;
     }
 
     if (app->pos_edit_menu)
@@ -222,12 +183,6 @@ static void status_input(InputEvent *event, void *context)
     if (event->type != InputTypeShort) return;
     if (app->debug_tx)
     {
-        if (event->key == InputKeyLeft || event->key == InputKeyUp || event->key == InputKeyDown)
-        {
-            dbgkey(app, event->key);
-            return;
-        }
-
         if (app->show_done)
         {
             if (event->key == InputKeyOk) app->repeat_more = true;
@@ -238,12 +193,6 @@ static void status_input(InputEvent *event, void *context)
     if (event->key != InputKeyBack) return;
 
     app->repeat_cancel = true;
-    if (app->tx_started && !app->tx_done)
-    {
-        flipperham_radio_stop(app);
-        app->tx_started = false;
-        app->tx_done = true;
-    }
 }
 
 static void tx_blink_green(void)
@@ -256,8 +205,7 @@ static void tx_blink_green(void)
 
 uint32_t repeat_scale(FlipperHamApp *app)
 {
-    if (app->encoding_index == 0)
-        return 4;
+    UNUSED(app);
     return 1;
 }
 
@@ -279,12 +227,10 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->call_menu = submenu_alloc();
     app->book_menu = submenu_alloc();
     app->c2_menu = submenu_alloc();
-    app->freq_menu = submenu_alloc();
     app->settings_menu = variable_item_list_alloc();
     app->ham_menu = variable_item_list_alloc();
     app->ham_tx_menu = variable_item_list_alloc();
     app->ssid_menu = variable_item_list_alloc();
-    app->freq_edit_menu = variable_item_list_alloc();
     app->pos_edit_menu = variable_item_list_alloc();
     app->text_input = text_input_alloc();
     app->readme_widget = widget_alloc();
@@ -299,7 +245,6 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->show_done = false;
     app->send_requested = false;
     app->ham_ok = false;
-    app->encoding_index = FlipperHamModemProfileDefault;
     app->ham_n = 0;
     app->repeat_n = 1;
     app->leadin_ms = 50;
@@ -324,7 +269,6 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->book_call_index = 0;
     app->ham_index = 0;
     app->ham_tx_index = 0;
-    app->freq_index = 0;
     app->bulletin_sel = FlipperHamBulletinIndexAdd;
     app->status_sel = FlipperHamStatusIndexAdd;
     app->message_sel = FlipperHamMessageIndexAdd;
@@ -332,12 +276,9 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->call_sel = FlipperHamCallIndexAdd;
     app->book_sel = FlipperHamBookIndexAdd;
     app->book_action_sel = FlipperHamC2IndexEdit;
-    app->freq_sel = FlipperHamFreqIndexAdd;
     app->ham_sel = 0;
     app->ham_tx_sel = 0;
     app->c2_h[0] = 0;
-    app->f_edit[0] = 0;
-    app->f_bad = false;
     app->aprs_path_index = 0;
     app->aprs_path_edit[0] = 0;
     app->debug_tx = false;
@@ -349,7 +290,6 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->pkt = NULL;
     app->wave = NULL;
 
-    app->dra_mode = false;
     app->dra.ptt_pin = &gpio_ext_pb3;
     app->dra.pd_pin = &gpio_ext_pb2;
     app->dra.sq_pin = &gpio_ext_pc3;
@@ -358,14 +298,14 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->dra.ready = false;
     app->dra_freq = 144.3900f;
     app->dra_freq_index = 0;
+    app->dra_volume = 8;
+    app->dra_squelch = 4;
     app->has_decoded = false;
     app->rx_active = false;
     app->rx_count = 0;
     app->rx_view_port = NULL;
 
     cfgload(app);
-    app->dbg_mod = app->rf_mod;
-    app->dbg_dev = app->rf_dev;
 
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
     splash_view_alloc(app);
@@ -399,7 +339,6 @@ FlipperHamApp *flipperham_app_alloc(void)
     position_menu_build(app);
     call_menu_build(app);
     book_menu_build(app);
-    freq_menu_build(app);
     settings_menu_build(app);
     ssidfix(app);
     ham_menu_build(app);
@@ -434,9 +373,6 @@ FlipperHamApp *flipperham_app_alloc(void)
     view_set_previous_callback(submenu_get_view(app->call_menu), flipperham_call_exit_callback);
     view_set_previous_callback(submenu_get_view(app->book_menu), book_exit);
     view_set_previous_callback(submenu_get_view(app->c2_menu), book_action_exit);
-    view_set_previous_callback(submenu_get_view(app->freq_menu), flipperham_freq_exit_callback);
-    view_set_previous_callback(variable_item_list_get_view(app->freq_edit_menu),
-                               flipperham_freq_edit_exit_callback);
     view_set_previous_callback(variable_item_list_get_view(app->pos_edit_menu),
                                flipperham_pos_edit_exit_callback);
     view_set_previous_callback(submenu_get_view(app->pos_action_menu),
@@ -454,7 +390,6 @@ FlipperHamApp *flipperham_app_alloc(void)
     variable_item_list_set_enter_callback(app->settings_menu, settings_enter, app);
     variable_item_list_set_enter_callback(app->ham_menu, ham_enter, app);
     variable_item_list_set_enter_callback(app->ham_tx_menu, ham_tx_enter, app);
-    variable_item_list_set_enter_callback(app->freq_edit_menu, freq_edit_enter, app);
     variable_item_list_set_enter_callback(app->pos_edit_menu, pos_edit_enter, app);
 
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewSplash, app->splash_view);
@@ -480,10 +415,6 @@ FlipperHamApp *flipperham_app_alloc(void)
                              submenu_get_view(app->book_menu));
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewC2,
                              submenu_get_view(app->c2_menu));
-    view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewFreq,
-                             submenu_get_view(app->freq_menu));
-    view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewFreqEdit,
-                             variable_item_list_get_view(app->freq_edit_menu));
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewPosEdit,
                              variable_item_list_get_view(app->pos_edit_menu));
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewPosAction,
@@ -511,9 +442,8 @@ void flipperham_app_free(FlipperHamApp *app)
         afsk_rx_stop(&app->afsk_rx);
         app->rx_active = false;
     }
-    if(app->dra_mode) {
+    if(app->dra.ready) {
         dra818v_deinit(&app->dra);
-        app->dra_mode = false;
     }
 
     if (gapp == app)
@@ -600,7 +530,7 @@ again:
         view_port_update(app->view_port);
         furi_delay_ms(100);
 
-        if(app->dra_mode && dra818v_ensure_ready(app)) {
+        if(dra818v_ensure_ready(app)) {
             dra818v_ptt_on(&app->dra);
             furi_delay_ms(50);
             afsk_tx_start(&app->afsk_tx, app->wave, app->wave_len);
@@ -619,20 +549,6 @@ again:
             furi_hal_light_set(LightGreen, 0);
             furi_hal_light_set(LightRed, 0);
             furi_hal_light_set(LightBlue, 0);
-        } else {
-            flipperham_radio_start(app);
-
-            while(!app->tx_done) {
-                view_port_update(app->view_port);
-                furi_delay_ms(50);
-            }
-
-            while(app->tx_started && !furi_hal_subghz_is_async_tx_complete()) {
-                view_port_update(app->view_port);
-                furi_delay_ms(20);
-            }
-
-            flipperham_radio_stop(app);
         }
         furi_hal_light_blink_stop();
         furi_hal_light_set(LightBlue, 0);
@@ -726,13 +642,11 @@ static bool dra818v_ensure_ready(FlipperHamApp *app)
         return false;
     }
 
-    dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, 4);
-    dra818v_set_volume(&app->dra, 8);
+    dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, app->dra_squelch);
+    dra818v_set_volume(&app->dra, app->dra_volume);
     dra818v_set_filter(&app->dra, false, false, false);
     return true;
 }
-
-/* ── RX listen view ─────────────────────────────────────────────── */
 
 static void rx_frame_callback(AfskFrame *frame, void *ctx)
 {
@@ -833,7 +747,6 @@ static void rx_input(InputEvent *event, void *ctx)
 
 void flipperham_rx_enter(FlipperHamApp *app)
 {
-    if(!app->dra_mode) return;
     if(!dra818v_ensure_ready(app)) return;
 
     app->rx_count = 0;

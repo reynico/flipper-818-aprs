@@ -15,4 +15,3 @@ void status_fix(FlipperHamApp *app);
 void message_fix(FlipperHamApp *app);
 void position_fix(FlipperHamApp *app);
 void calls_fix(FlipperHamApp *app);
-void freq_fix(FlipperHamApp *app);

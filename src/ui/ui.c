@@ -19,8 +19,9 @@ static void ham_morse_play(FlipperHamApp *app);
 static void c2(void *context, uint32_t index);
 static void aprs_path_change(VariableItem *item);
 static void debug_change(VariableItem *item);
-static void radio_mode_change(VariableItem *item);
 static void vhf_freq_change(VariableItem *item);
+static void volume_change(VariableItem *item);
+static void squelch_change(VariableItem *item);
 static void aprs_path_custom_save(void *context);
 static const char *aprs_paths[] = {"None", "RFONLY", "NOGATE", "W1-1", "W2-2", "ARISS", "APRSAT", "Custom"};
 FlipperHamApp *gapp;
@@ -138,18 +139,14 @@ static void txdbgpacket(Canvas *canvas, FlipperHamApp *app)
 
 static void txdbgdraw(Canvas *canvas, FlipperHamApp *app)
 {
-    static const char *dl[] = {"1.6", "1.8", "2.0", "2.2", "2.4", "2.5", "2.8", "3.0", "5.0"};
     char a[24];
-    uint32_t hz;
     const char *st = app->repeat_wait ? "Wait" : "TX";
     uint8_t x;
-
-    hz = tx_freq_get(app);
 
     canvas_clear(canvas);
     canvas_set_font(canvas, FontKeyboard);
 
-    snprintf(a, sizeof(a), "khz: %06lu.%03lu", (unsigned long)(hz / 1000UL), (unsigned long)(hz % 1000UL));
+    snprintf(a, sizeof(a), "VHF: %.4f MHz", (double)app->dra_freq);
     canvas_draw_str(canvas, 0, 7, a);
 
     snprintf(a, sizeof(a), "repeat %u/%u", app->repeat_i, app->repeat_n);
@@ -157,9 +154,6 @@ static void txdbgdraw(Canvas *canvas, FlipperHamApp *app)
 
     x = (uint8_t)(128 - (strlen(st) * 6));
     canvas_draw_str(canvas, x, 15, st);
-
-    snprintf(a, sizeof(a), "%s %s", app->dbg_mod ? "GFSK" : "2FSK", dl[app->dbg_dev < 9 ? app->dbg_dev : 8]);
-    canvas_draw_str(canvas, 0, 23, a);
 
     if (app->pkt) txdbgpacket(canvas, app);
 
@@ -180,7 +174,7 @@ void flipperham_draw_callback(Canvas *canvas, void *context)
 
     canvas_clear(canvas);
     canvas_set_font(canvas, FontBigNumbers);
-    snprintf(a, sizeof(a), "%06lu", (unsigned long)(tx_freq_get(app) / 1000UL));
+    snprintf(a, sizeof(a), "%.4f", (double)app->dra_freq);
     canvas_draw_str_aligned(canvas, 64, 11, AlignCenter, AlignCenter, a);
     canvas_set_font(canvas, FontPrimary);
 
@@ -454,20 +448,6 @@ uint32_t flipperham_call_exit_callback(void *context)
     if (app->tx_type == 2)
         return FlipperHamViewMessage;
     return FlipperHamViewSend;
-}
-
-uint32_t flipperham_freq_exit_callback(void *context)
-{
-    UNUSED(context);
-
-    return FlipperHamViewSettings;
-}
-
-uint32_t flipperham_freq_edit_exit_callback(void *context)
-{
-    UNUSED(context);
-
-    return FlipperHamViewFreq;
 }
 
 uint32_t flipperham_pos_edit_exit_callback(void *context)
@@ -822,32 +802,19 @@ void settings_menu_build(FlipperHamApp *app)
     if (app->aprs_path_index >= sizeof(aprs_paths) / sizeof(aprs_paths[0]))
         app->aprs_path_index = 0;
 
-    it = variable_item_list_add(app->settings_menu, "Frequency", 1, NULL, NULL);
-    freq_show(a, sizeof(a), tx_freq_get(app));
-    variable_item_set_current_value_index(it, 0);
-    variable_item_set_current_value_text(it, a);
-
     it = variable_item_list_add(
-        app->settings_menu, "Baud",
-        sizeof(flipperham_modem_profiles) / sizeof(flipperham_modem_profiles[0]), baud_change, app);
-    variable_item_set_current_value_index(it, app->encoding_index);
-    variable_item_set_current_value_text(it, flipperham_modem_profiles[app->encoding_index].name);
+        app->settings_menu, "VHF Freq", VHF_FREQ_COUNT, vhf_freq_change, app);
+    variable_item_set_current_value_index(it, app->dra_freq_index);
+    variable_item_set_current_value_text(it, vhf_labels[app->dra_freq_index]);
 
     it = variable_item_list_add(
         app->settings_menu, "APRS Path", sizeof(aprs_paths) / sizeof(aprs_paths[0]), aprs_path_change, app);
     variable_item_set_current_value_index(it, app->aprs_path_index);
     variable_item_set_current_value_text(it, aprs_paths[app->aprs_path_index]);
 
-    it = variable_item_list_add(app->settings_menu, "CC1101 profile", 2, profile_change, app);
-    variable_item_set_current_value_index(it, app->rf_mod);
-    variable_item_set_current_value_text(it, app->rf_mod ? "GFSK" : "2FSK");
-
-    it = variable_item_list_add(app->settings_menu, "Deviation", 9, deviation_change, app);
-    variable_item_set_current_value_index(it, app->rf_dev);
-    {
-        static const char *dl[] = {"1.6", "1.8", "2.0", "2.2", "2.4", "2.5", "2.8", "3.0", "5.0"};
-        variable_item_set_current_value_text(it, dl[app->rf_dev < 9 ? app->rf_dev : 8]);
-    }
+    it = variable_item_list_add(app->settings_menu, "Custom Path", 1, NULL, NULL);
+    variable_item_set_current_value_index(it, 0);
+    variable_item_set_current_value_text(it, app->aprs_path_edit[0] ? app->aprs_path_edit : "");
 
     it = variable_item_list_add(app->settings_menu, "Repeat TX", 5, repeat_change, app);
     variable_item_set_current_value_index(it, app->repeat_n - 1);
@@ -864,20 +831,15 @@ void settings_menu_build(FlipperHamApp *app)
     snprintf(a, sizeof(a), "%u", app->preamble_ms);
     variable_item_set_current_value_text(it, a);
 
-    it = variable_item_list_add(app->settings_menu, "Custom Path", 1, NULL, NULL);
-    variable_item_set_current_value_index(it, 0);
-    variable_item_set_current_value_text(it, app->aprs_path_edit[0] ? app->aprs_path_edit : "");
+    it = variable_item_list_add(app->settings_menu, "Volume", 8, volume_change, app);
+    variable_item_set_current_value_index(it, app->dra_volume - 1);
+    snprintf(a, sizeof(a), "%u", app->dra_volume);
+    variable_item_set_current_value_text(it, a);
 
-    it = variable_item_list_add(app->settings_menu, "Radio", 2, radio_mode_change, app);
-    variable_item_set_current_value_index(it, app->dra_mode ? 1 : 0);
-    variable_item_set_current_value_text(it, app->dra_mode ? "DRA818V" : "CC1101");
-
-    if(app->dra_mode) {
-        it = variable_item_list_add(
-            app->settings_menu, "VHF Freq", VHF_FREQ_COUNT, vhf_freq_change, app);
-        variable_item_set_current_value_index(it, app->dra_freq_index);
-        variable_item_set_current_value_text(it, vhf_labels[app->dra_freq_index]);
-    }
+    it = variable_item_list_add(app->settings_menu, "Squelch", 9, squelch_change, app);
+    variable_item_set_current_value_index(it, app->dra_squelch);
+    snprintf(a, sizeof(a), "%u", app->dra_squelch);
+    variable_item_set_current_value_text(it, a);
 
     it = variable_item_list_add(app->settings_menu, "Debug", 2, debug_change, app);
     variable_item_set_current_value_index(it, app->debug_tx ? 1 : 0);
@@ -1049,16 +1011,27 @@ void ham_ssid_change(VariableItem *item)
     ham_save_txt(app);
 }
 
-void baud_change(VariableItem *item)
+static void volume_change(VariableItem *item)
 {
     FlipperHamApp *app = variable_item_get_context(item);
+    char a[4];
+    app->dra_volume = variable_item_get_current_value_index(item) + 1;
+    snprintf(a, sizeof(a), "%u", app->dra_volume);
+    variable_item_set_current_value_text(item, a);
+    if(app->dra.ready)
+        dra818v_set_volume(&app->dra, app->dra_volume);
+    cfgsave(app);
+}
 
-    app->encoding_index = variable_item_get_current_value_index(item);
-    if (app->encoding_index >=
-        sizeof(flipperham_modem_profiles) / sizeof(flipperham_modem_profiles[0]))
-        app->encoding_index = FlipperHamModemProfileDefault;
-
-    variable_item_set_current_value_text(item, flipperham_modem_profiles[app->encoding_index].name);
+static void squelch_change(VariableItem *item)
+{
+    FlipperHamApp *app = variable_item_get_context(item);
+    char a[4];
+    app->dra_squelch = variable_item_get_current_value_index(item);
+    snprintf(a, sizeof(a), "%u", app->dra_squelch);
+    variable_item_set_current_value_text(item, a);
+    if(app->dra.ready)
+        dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, app->dra_squelch);
     cfgsave(app);
 }
 
@@ -1083,26 +1056,6 @@ static void debug_change(VariableItem *item)
     cfgsave(app);
 }
 
-static void radio_mode_change(VariableItem *item)
-{
-    FlipperHamApp *app = variable_item_get_context(item);
-
-    app->dra_mode = variable_item_get_current_value_index(item) == 1;
-
-    if(!app->dra_mode && app->dra.ready) {
-        if(app->rx_active) {
-            afsk_rx_stop(&app->afsk_rx);
-            app->rx_active = false;
-        }
-        dra818v_deinit(&app->dra);
-    }
-
-    variable_item_set_current_value_text(
-        item, app->dra_mode ? "DRA818V" : "CC1101");
-
-    settings_menu_build(app);
-}
-
 static void vhf_freq_change(VariableItem *item)
 {
     FlipperHamApp *app = variable_item_get_context(item);
@@ -1115,33 +1068,7 @@ static void vhf_freq_change(VariableItem *item)
     variable_item_set_current_value_text(item, vhf_labels[app->dra_freq_index]);
 
     if(app->dra.ready)
-        dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, 4);
-}
-
-void profile_change(VariableItem *item)
-{
-    FlipperHamApp *app = variable_item_get_context(item);
-
-    app->rf_mod = variable_item_get_current_value_index(item);
-    if (app->rf_mod > 1) app->rf_mod = 0;
-
-    variable_item_set_current_value_text(item, app->rf_mod ? "GFSK" : "2FSK");
-    app->dbg_mod = app->rf_mod;
-    preset_fix(app);
-    cfgsave(app);
-}
-
-void deviation_change(VariableItem *item)
-{
-    static const char *dl[] = {"1.6", "1.8", "2.0", "2.2", "2.4", "2.5", "2.8", "3.0", "5.0"};
-    FlipperHamApp *app = variable_item_get_context(item);
-
-    app->rf_dev = variable_item_get_current_value_index(item);
-    if (app->rf_dev > 8) app->rf_dev = 8;
-
-    variable_item_set_current_value_text(item, dl[app->rf_dev]);
-    app->dbg_dev = app->rf_dev;
-    preset_fix(app);
+        dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, app->dra_squelch);
     cfgsave(app);
 }
 
@@ -1182,31 +1109,6 @@ void preamble_change(VariableItem *item)
     cfgsave(app);
 }
 
-void freq_change(VariableItem *item)
-{
-    FlipperHamApp *app = variable_item_get_context(item);
-    uint8_t a;
-
-    app->f_bad = false;
-    a = variable_item_get_current_value_index(item);
-
-    while (a > 100)
-    {
-        app->freq_edit_hz = freq_step(app->freq_edit_hz, 1);
-        a--;
-    }
-
-    while (a < 100)
-    {
-        app->freq_edit_hz = freq_step(app->freq_edit_hz, -1);
-        a++;
-    }
-
-    fsh2(app->f_edit, sizeof(app->f_edit), app->freq_edit_hz);
-    variable_item_set_current_value_text(item, app->f_edit);
-    variable_item_set_current_value_index(item, 100);
-}
-
 void ssid_enter(void *context, uint32_t index)
 {
     FlipperHamApp *app = context;
@@ -1225,13 +1127,6 @@ void ssid_enter(void *context, uint32_t index)
 void settings_enter(void *context, uint32_t index)
 {
     FlipperHamApp *app = context;
-
-    if (index == FlipperHamSettingsIndexFreq)
-    {
-        freq_menu_build(app);
-        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewFreq);
-        return;
-    }
 
     if (index == FlipperHamSettingsIndexCustomPath)
     {

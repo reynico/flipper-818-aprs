@@ -3,7 +3,6 @@
 #include "app_state.h"
 #include "rf_gen.h"
 
-#include <furi_hal_subghz.h>
 #include <furi_hal_resources.h>
 #include <storage/storage.h>
 
@@ -26,8 +25,6 @@ static void cfg_defaults(FlipperHamApp *app)
     memset(app->message_used, 0, sizeof(app->message_used));
     memset(app->calls_used, 0, sizeof(app->calls_used));
     memset(app->pos_used, 0, sizeof(app->pos_used));
-    memset(app->freq, 0, sizeof(app->freq));
-    memset(app->freq_used, 0, sizeof(app->freq_used));
 
     app->bulletin_n = 0;
     app->status_n = 0;
@@ -35,12 +32,7 @@ static void cfg_defaults(FlipperHamApp *app)
     app->message_n = 0;
     app->calls_n = 0;
     app->pos_n = 0;
-    app->freq_n = 0;
 
-    app->encoding_index = FlipperHamModemProfileDefault;
-    app->rf_mod = 0;
-    app->rf_dev = 8;
-    app->tx_freq_index = 0;
     app->dst_ssid = 0;
     app->repeat_n = 1;
     app->leadin_ms = 50;
@@ -49,11 +41,10 @@ static void cfg_defaults(FlipperHamApp *app)
     app->aprs_path_edit[0] = 0;
     app->debug_tx = false;
 
-    /* Seed one valid entry of each type so a fresh install is immediately testable. */
     snprintf(app->bulletin[0], sizeof(app->bulletin[0]), "flipper bulletin");
     snprintf(app->status[0], sizeof(app->status[0]), "flipper status");
-    snprintf(app->calls[0], sizeof(app->calls[0]), "FL1PER");
-    snprintf(app->calls[1], sizeof(app->calls[1]), "YO3GND-12");
+    snprintf(app->calls[0], sizeof(app->calls[0]), "LU3ARN");
+    snprintf(app->calls[1], sizeof(app->calls[1]), "FL1PER");
     snprintf(app->pos_name[0], sizeof(app->pos_name[0]), "Cismigiu Park");
     snprintf(app->pos_lat[0], sizeof(app->pos_lat[0]), "44.437461");
     snprintf(app->pos_lon[0], sizeof(app->pos_lon[0]), "26.090215");
@@ -76,17 +67,14 @@ static void cfg_defaults(FlipperHamApp *app)
     app->message_n = 1;
     app->calls_n = 2;
     app->pos_n = 2;
-    app->freq[0] = CARRIER_HZ;
-    app->freq_used[0] = 1;
-    app->freq_n = 1;
 
-    preset_fix(app);
-
-    app->dra_mode = false;
     app->dra.ptt_pin = &gpio_ext_pb3;
     app->dra.pd_pin = &gpio_ext_pb2;
     app->dra.sq_pin = &gpio_ext_pc3;
     app->dra_freq = 144.3900f;
+    app->dra_freq_index = 0;
+    app->dra_volume = 8;
+    app->dra_squelch = 4;
     app->has_decoded = false;
     app->rx_active = false;
 }
@@ -102,10 +90,6 @@ void cfgsave(FlipperHamApp *app)
         return;
     memset(c, 0, sizeof(FlipperHamCfg));
 
-    c->encoding_index = app->encoding_index;
-    c->rf_mod = app->rf_mod;
-    c->rf_dev = app->rf_dev;
-    c->tx_freq_index = app->tx_freq_index;
     c->dst_ssid = app->dst_ssid;
     c->repeat_n = app->repeat_n;
     c->ham_index = app->ham_index;
@@ -113,10 +97,12 @@ void cfgsave(FlipperHamApp *app)
     c->preamble_ms = app->preamble_ms;
     c->aprs_path_index = app->aprs_path_index;
     c->debug_tx = app->debug_tx;
+    c->dra_freq_index = app->dra_freq_index;
+    c->dra_volume = app->dra_volume;
+    c->dra_squelch = app->dra_squelch;
 
     memcpy(c->bulletin, app->bulletin, sizeof(c->bulletin));
     memcpy(c->status, app->status, sizeof(c->status));
-    memcpy(c->freq, app->freq, sizeof(c->freq));
     memcpy(c->aprs_path_edit, app->aprs_path_edit, sizeof(c->aprs_path_edit));
 
     memcpy(c->message, app->message, sizeof(c->message));
@@ -127,7 +113,6 @@ void cfgsave(FlipperHamApp *app)
     memcpy(c->bulletin_used, app->bulletin_used, sizeof(c->bulletin_used));
     memcpy(c->status_used, app->status_used, sizeof(c->status_used));
     memcpy(c->message_used, app->message_used, sizeof(c->message_used));
-    memcpy(c->freq_used, app->freq_used, sizeof(c->freq_used));
     memcpy(c->pos_used, app->pos_used, sizeof(c->pos_used));
 
     c->bulletin_n = app->bulletin_n;
@@ -135,7 +120,10 @@ void cfgsave(FlipperHamApp *app)
 
     c->message_n = app->message_n;
     c->pos_n = app->pos_n;
-    c->freq_n = app->freq_n;
+
+    memcpy(c->calls, app->calls, sizeof(c->calls));
+    memcpy(c->calls_used, app->calls_used, sizeof(c->calls_used));
+    c->calls_n = app->calls_n;
 
     storage = furi_record_open(RECORD_STORAGE);
     file = storage_file_alloc(storage);
@@ -159,8 +147,6 @@ void cfgload(FlipperHamApp *app)
     File *file;
     FlipperHamCfg *c;
     uint16_t n;
-    uint16_t old_n;
-    uint16_t old_n2;
     uint8_t i;
 
     c = malloc(sizeof(FlipperHamCfg));
@@ -195,9 +181,7 @@ void cfgload(FlipperHamApp *app)
     storage_file_free(file);
     furi_record_close(RECORD_STORAGE);
 
-    old_n = offsetof(FlipperHamCfg, aprs_path_index);
-    old_n2 = offsetof(FlipperHamCfg, debug_tx);
-    if (n != sizeof(FlipperHamCfg) && n != old_n && n != old_n2)
+    if (n != sizeof(FlipperHamCfg))
     {
         free(c);
         cfg_defaults(app);
@@ -207,10 +191,6 @@ void cfgload(FlipperHamApp *app)
         return;
     }
 
-    app->encoding_index = c->encoding_index;
-    app->rf_mod = c->rf_mod;
-    app->rf_dev = c->rf_dev;
-    app->tx_freq_index = c->tx_freq_index;
     app->dst_ssid = c->dst_ssid;
     app->repeat_n = c->repeat_n;
     app->ham_index = c->ham_index;
@@ -218,10 +198,12 @@ void cfgload(FlipperHamApp *app)
     app->preamble_ms = c->preamble_ms;
     app->aprs_path_index = c->aprs_path_index;
     app->debug_tx = c->debug_tx ? true : false;
+    app->dra_freq_index = c->dra_freq_index;
+    app->dra_volume = c->dra_volume;
+    app->dra_squelch = c->dra_squelch;
 
     memcpy(app->bulletin, c->bulletin, sizeof(app->bulletin));
     memcpy(app->status, c->status, sizeof(app->status));
-    memcpy(app->freq, c->freq, sizeof(app->freq));
     memcpy(app->aprs_path_edit, c->aprs_path_edit, sizeof(app->aprs_path_edit));
     memcpy(app->message, c->message, sizeof(app->message));
     memcpy(app->pos_name, c->pos_name, sizeof(app->pos_name));
@@ -232,18 +214,16 @@ void cfgload(FlipperHamApp *app)
     memcpy(app->status_used, c->status_used, sizeof(app->status_used));
     memcpy(app->message_used, c->message_used, sizeof(app->message_used));
     memcpy(app->pos_used, c->pos_used, sizeof(app->pos_used));
-    memcpy(app->freq_used, c->freq_used, sizeof(app->freq_used));
+
+    memcpy(app->calls, c->calls, sizeof(app->calls));
+    memcpy(app->calls_used, c->calls_used, sizeof(app->calls_used));
+    app->calls_n = c->calls_n;
 
     app->bulletin_n = c->bulletin_n;
     app->status_n = c->status_n;
 
     app->message_n = c->message_n;
     app->pos_n = c->pos_n;
-    app->freq_n = c->freq_n;
-
-    if (app->encoding_index >=
-        (sizeof(flipperham_modem_profiles) / sizeof(flipperham_modem_profiles[0])))
-        app->encoding_index = FlipperHamModemProfileDefault;
 
     if (app->dst_ssid > 15)
         app->dst_ssid = 0;
@@ -257,8 +237,10 @@ void cfgload(FlipperHamApp *app)
         app->preamble_ms = 1000;
     app->leadin_ms = (app->leadin_ms / 50) * 50;
     app->preamble_ms = (app->preamble_ms / 50) * 50;
-
-    preset_fix(app);
+    if (app->dra_volume < 1 || app->dra_volume > 8)
+        app->dra_volume = 8;
+    if (app->dra_squelch > 8)
+        app->dra_squelch = 4;
 
     for (i = 0; i < TXT_N; i++)
     {
@@ -275,7 +257,6 @@ void cfgload(FlipperHamApp *app)
     status_fix(app);
     message_fix(app);
     position_fix(app);
-    freq_fix(app);
     callbook_load_txt(app);
     ham_load_txt(app);
 
@@ -370,44 +351,6 @@ void message_fix(FlipperHamApp *app)
         if (app->message_used[i])
             app->message_n++;
     }
-}
-
-void freq_fix(FlipperHamApp *app)
-{
-    uint8_t i;
-    uint8_t a;
-
-    app->freq_n = 0;
-
-    for (i = 0; i < FREQ_N; i++)
-    {
-        if (app->freq[i] && furi_hal_subghz_is_frequency_valid(app->freq[i]))
-            app->freq_used[i] = 1;
-        else
-            app->freq_used[i] = 0;
-
-        if (app->freq_used[i])
-            app->freq_n++;
-    }
-
-    if (!app->freq_n)
-    {
-        app->freq[0] = CARRIER_HZ;
-        app->freq_used[0] = 1;
-        app->freq_n = 1;
-        app->tx_freq_index = 0;
-        return;
-    }
-
-    if (app->tx_freq_index < FREQ_N && app->freq_used[app->tx_freq_index])
-        return;
-
-    for (a = 0; a < FREQ_N; a++)
-        if (app->freq_used[a])
-        {
-            app->tx_freq_index = a;
-            return;
-        }
 }
 
 bool call_split(const char *s, char *out, uint8_t *ssid, bool *has_ssid)
