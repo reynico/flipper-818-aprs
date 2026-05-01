@@ -308,6 +308,15 @@ FlipperHamApp *flipperham_app_alloc(void)
 
     cfgload(app);
 
+    {
+        static const float vhf_freqs[] = {
+            144.3900f, 144.8000f, 145.1750f, 144.6400f,
+            144.6600f, 145.5250f, 432.5000f,
+        };
+        if(app->dra_freq_index < sizeof(vhf_freqs) / sizeof(vhf_freqs[0]))
+            app->dra_freq = vhf_freqs[app->dra_freq_index];
+    }
+
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
     splash_view_alloc(app);
     app->return_view = splash_startup_view(app);
@@ -660,6 +669,10 @@ static void rx_frame_callback(AfskFrame *frame, void *ctx)
     AprsDecoded dec;
 
     if(aprs_decode(frame, &dec)) {
+        app->rx_led_state = 1;
+        app->rx_led_tick = furi_get_tick();
+        furi_hal_light_set(LightGreen, 255);
+        furi_hal_light_set(LightRed, 0);
         uint8_t slot = app->rx_msg_wr < RX_MSG_MAX ? app->rx_msg_wr : RX_MSG_MAX - 1;
         if(app->rx_msg_wr >= RX_MSG_MAX) {
             for(uint8_t i = 0; i < RX_MSG_MAX - 1; i++)
@@ -683,10 +696,28 @@ static void rx_draw(Canvas *canvas, void *ctx)
         (double)app->afsk_rx.dbg_mark, (double)app->afsk_rx.dbg_space,
         (unsigned long)app->afsk_rx.dbg_flags);
 
+    if(app->afsk_rx.dbg_crc_fail != app->rx_last_crc_fail) {
+        app->rx_last_crc_fail = app->afsk_rx.dbg_crc_fail;
+        app->rx_led_state = 2;
+        app->rx_led_tick = furi_get_tick();
+        furi_hal_light_set(LightRed, 255);
+        furi_hal_light_set(LightGreen, 0);
+    }
+
+    if(app->rx_led_state && (furi_get_tick() - app->rx_led_tick > 500)) {
+        furi_hal_light_set(LightGreen, 0);
+        furi_hal_light_set(LightRed, 0);
+        app->rx_led_state = 0;
+    }
+
     canvas_clear(canvas);
 
     canvas_set_font(canvas, FontPrimary);
-    snprintf(line, sizeof(line), "RX %.4f MHz", (double)app->dra_freq);
+    if(app->rx_debug) {
+        snprintf(line, sizeof(line), "RX %.4f MHz", (double)app->dra_freq);
+    } else {
+        snprintf(line, sizeof(line), "RX %.4f  PKT:%u", (double)app->dra_freq, app->rx_count);
+    }
     canvas_draw_str(canvas, 0, 10, line);
 
     canvas_set_font(canvas, FontSecondary);
@@ -721,9 +752,6 @@ static void rx_draw(Canvas *canvas, void *ctx)
             canvas_draw_str(canvas, 0, 52, line);
         }
     } else {
-        snprintf(line, sizeof(line), "Packets: %u", app->rx_count);
-        canvas_draw_str(canvas, 0, 22, line);
-
         if(app->has_decoded) {
             uint8_t vi = app->rx_msg_view < app->rx_msg_wr ? app->rx_msg_view : 0;
             if(vi >= RX_MSG_MAX) vi = RX_MSG_MAX - 1;
@@ -731,7 +759,7 @@ static void rx_draw(Canvas *canvas, void *ctx)
             uint8_t idx = vi + 1;
             uint8_t total = app->rx_msg_wr;
 
-            uint8_t y = 34;
+            uint8_t y = 22;
             snprintf(line, sizeof(line), "FROM: %s [%u/%u]", d->src, idx, total);
             canvas_draw_str(canvas, 0, y, line);
             y += 10;
@@ -801,6 +829,8 @@ void flipperham_rx_enter(FlipperHamApp *app)
     }
 
     afsk_rx_stop(&app->afsk_rx);
+    furi_hal_light_set(LightGreen, 0);
+    furi_hal_light_set(LightRed, 0);
 
     gui_remove_view_port(app->gui, app->rx_view_port);
     view_port_free(app->rx_view_port);

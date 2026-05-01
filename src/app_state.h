@@ -151,5 +151,8 @@ typedef struct FlipperHamApp
     uint8_t dra_squelch;
     bool rx_debug;
     uint8_t rx_hdr[4];
+    uint32_t rx_last_crc_fail;
+    uint8_t rx_led_state;
+    uint32_t rx_led_tick;
     ViewPort *rx_view_port;
 } FlipperHamApp;
