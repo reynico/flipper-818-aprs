@@ -400,7 +400,7 @@ static uint8_t splash_request_start(uint8_t day)
     return day;
 }
 
-static void splash_footer_draw(Canvas *canvas, uint8_t footer_i)
+static void __attribute__((unused)) splash_footer_draw(Canvas *canvas, uint8_t footer_i)
 {
     const SplashFooter *f;
     int y;
@@ -420,11 +420,18 @@ static void splash_draw(Canvas *canvas, void *model)
 {
     SplashModel *m = model;
 
+    UNUSED(splash_yo3gnd);
+    UNUSED(splash_footer);
+
     canvas_clear(canvas);
     canvas_draw_xbm(canvas, 4, 16, 32, 32, splash_left_icon);
 
-    canvas_draw_xbm(canvas, 45, 8, 70, 16, splash_yo3gnd);
-    splash_footer_draw(canvas, m->footer_i);
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str(canvas, 42, 18, "818 APRS");
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str(canvas, 42, 30, "by LU3ARN");
+    canvas_draw_str(canvas, 42, 42, "Based on flipper-ham");
+    canvas_draw_str(canvas, 42, 52, "by YO3GND");
 
     if (m->show_next_button)
         elements_button_right(canvas, "Next");
