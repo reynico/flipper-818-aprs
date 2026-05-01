@@ -99,10 +99,13 @@ static void rx_process_bit(AfskRx *rx, uint8_t bit)
     } else {
         if(rx->ones_count == 6) {
             if(rx->state == AfskRxData && rx->frame_len >= 17) {
+                rx->dbg_last_frame_len = rx->frame_len;
                 AfskFrame frame;
                 if(ax25_decode_frame(rx->frame_buf, rx->frame_len, &frame)) {
                     if(rx->frame_cb)
                         rx->frame_cb(&frame, rx->frame_ctx);
+                } else {
+                    rx->dbg_crc_fail++;
                 }
             }
             rx->state = AfskRxData;
@@ -143,6 +146,7 @@ static int32_t afsk_rx_worker(void *ctx)
     float dc_avg = 2048.0f;
     bool last_sign = false;
     uint8_t bit_phase = 0;
+    int16_t adc_min = 32767, adc_max = -32768;
     uint32_t sample_n = 0;
 
     while(rx->running) {
@@ -151,12 +155,23 @@ static int32_t afsk_rx_worker(void *ctx)
         dc_avg = dc_avg * 0.995f + (float)raw * 0.005f;
         int16_t x = (int16_t)((float)raw - dc_avg);
 
+        if(x < adc_min) adc_min = x;
+        if(x > adc_max) adc_max = x;
+        sample_n++;
+        if((sample_n & 0xFF) == 0) {
+            rx->dbg_adc_min = adc_min;
+            rx->dbg_adc_max = adc_max;
+            adc_min = 32767;
+            adc_max = -32768;
+        }
+
         float product = (float)x * (float)delay_line[delay_idx];
         delay_line[delay_idx] = x;
         delay_idx++;
         if(delay_idx >= AFSK_DELAY) delay_idx = 0;
 
         lpf = lpf * (1.0f - AFSK_LPF_ALPHA) + product * AFSK_LPF_ALPHA;
+        rx->dbg_mark = lpf;
 
         bool cur_sign = lpf > 0;
         if(cur_sign != last_sign) {
@@ -172,15 +187,20 @@ static int32_t afsk_rx_worker(void *ctx)
             bit_phase = 0;
 
             float mag = lpf < 0 ? -lpf : lpf;
+            rx->dbg_space = mag;
+
             if(mag > AFSK_NOISE_FLOOR) {
                 bool is_mark = lpf < 0;
                 uint8_t bit = (is_mark == rx->last_tone) ? 1 : 0;
                 rx->last_tone = is_mark;
+
+                if(rx->ones_count == 6 && !bit)
+                    rx->dbg_flags++;
+
                 rx_process_bit(rx, bit);
             }
         }
 
-        sample_n++;
         if((sample_n & 0xF) == 0)
             furi_thread_yield();
     }

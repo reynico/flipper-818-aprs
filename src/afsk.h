@@ -11,6 +11,9 @@
 #define AFSK_BAUD            1200
 #define AFSK_SAMPLES_PER_BIT (AFSK_SAMPLE_RATE / AFSK_BAUD)
 
+#define AFSK_RX_BUF_BITS     8
+#define AFSK_RX_BUF_SIZE     (1 << AFSK_RX_BUF_BITS)
+#define AFSK_RX_BUF_MASK     (AFSK_RX_BUF_SIZE - 1)
 #define AFSK_RX_FRAME_MAX    330
 
 typedef struct {
@@ -38,6 +41,12 @@ typedef enum {
 } AfskRxState;
 
 typedef struct {
+    volatile int16_t samples[AFSK_RX_BUF_SIZE];
+    volatile uint16_t wr;
+    uint16_t rd;
+
+    int16_t block[AFSK_SAMPLES_PER_BIT];
+
     bool last_tone;
     AfskRxState state;
     uint8_t ones_count;
@@ -52,6 +61,14 @@ typedef struct {
     FuriHalAdcHandle *adc;
     volatile bool running;
     FuriThread *worker;
+
+    volatile int16_t dbg_adc_min;
+    volatile int16_t dbg_adc_max;
+    volatile float dbg_mark;
+    volatile float dbg_space;
+    volatile uint32_t dbg_flags;
+    volatile uint32_t dbg_crc_fail;
+    volatile uint16_t dbg_last_frame_len;
 } AfskRx;
 
 void afsk_tx_start(AfskTx *tx, uint16_t *wave, uint16_t wave_len);
