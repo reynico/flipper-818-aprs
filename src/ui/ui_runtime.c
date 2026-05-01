@@ -812,22 +812,22 @@ static void rx_input(InputEvent *event, void *ctx)
 
     if(event->key == InputKeyBack) {
         app->rx_active = false;
-    } else if(event->key == InputKeyDown && app->has_decoded && app->rx_msg_wr > 0) {
+    } else if(event->key == InputKeyDown && app->has_decoded) {
         if(app->rx_msg_total_lines > app->rx_msg_visible_lines &&
-           app->rx_msg_scroll + app->rx_msg_visible_lines < app->rx_msg_total_lines) {
+           app->rx_msg_scroll + app->rx_msg_visible_lines < app->rx_msg_total_lines)
             app->rx_msg_scroll++;
-        } else {
-            uint8_t last = app->rx_msg_wr - 1;
-            if(last >= RX_MSG_MAX) last = RX_MSG_MAX - 1;
-            if(app->rx_msg_view < last) {
-                app->rx_msg_view++;
-                app->rx_msg_scroll = 0;
-            }
-        }
-    } else if(event->key == InputKeyUp && app->has_decoded && app->rx_msg_wr > 0) {
-        if(app->rx_msg_scroll > 0) {
+    } else if(event->key == InputKeyUp && app->has_decoded) {
+        if(app->rx_msg_scroll > 0)
             app->rx_msg_scroll--;
-        } else if(app->rx_msg_view > 0) {
+    } else if(event->key == InputKeyRight && app->has_decoded && app->rx_msg_wr > 0) {
+        uint8_t last = app->rx_msg_wr - 1;
+        if(last >= RX_MSG_MAX) last = RX_MSG_MAX - 1;
+        if(app->rx_msg_view < last) {
+            app->rx_msg_view++;
+            app->rx_msg_scroll = 0;
+        }
+    } else if(event->key == InputKeyLeft && app->has_decoded && app->rx_msg_wr > 0) {
+        if(app->rx_msg_view > 0) {
             app->rx_msg_view--;
             app->rx_msg_scroll = 0;
         }
