@@ -100,6 +100,27 @@ Format: `CALLSIGN[-SSID],PASSCODE` — one per line. The SSID and IS passcode au
 
 **RX**: TIM2 hardware timer triggers ADC conversions at exactly 13200 Hz via TRGO. An ISR collects samples into a circular buffer. A worker thread runs a delay-and-multiply discriminator with IIR low-pass filtering, clock recovery, and AX.25 frame assembly. Decoded APRS packets are displayed on screen.
 
+## Testing with BladeRF
+
+A Python script is included for generating test APRS packets via a BladeRF SDR. Requires `numpy` and `bladeRF-cli`.
+
+```bash
+pip install numpy
+python3 tools/aprs_bladerf_tx.py --freq 144800000 --gain 40 --count 5
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--freq` | 144800000 | TX frequency in Hz |
+| `--gain` | 20 | BladeRF TX gain |
+| `--count` | 5 | Number of packets to send |
+| `--call` | TEST01 | Source callsign |
+| `--ssid` | 1 | Source SSID |
+| `--payload` | `>BladeRF APRS test` | APRS payload (prefix with `>` for status) |
+| `--leadin` | 200 | Carrier lead-in before AFSK (ms) |
+
+The script generates Bell 202 AFSK, FM-modulates it, and transmits via `bladeRF-cli` in SC16Q11 format. Verify with OpenWebRX or similar before testing against the Flipper.
+
 ## Notes
 
 - Only transmit where you are legally allowed to do so
