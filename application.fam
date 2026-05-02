@@ -17,6 +17,7 @@ if app_dir and app_dir not in sys.path:
 git_commit = "fail"
 git_host = "fail"
 git_built = "fail"
+git_version = "1.0.0"
 
 try:
     import gitver
@@ -24,6 +25,17 @@ try:
     git_commit = getattr(gitver, "git_commit", "fail")
     git_host = getattr(gitver, "git_host", "fail")
     git_built = getattr(gitver, "git_built", "fail")
+except Exception:
+    pass
+
+try:
+    import subprocess
+    tag = subprocess.check_output(
+        ["git", "describe", "--tags", "--abbrev=0"],
+        cwd=app_dir, stderr=subprocess.DEVNULL
+    ).decode().strip().lstrip("v")
+    if tag:
+        git_version = tag
 except Exception:
     pass
 
@@ -38,6 +50,7 @@ App(
         f'APP_BUILD_COMMIT=\\"{git_commit}\\"',
         f'APP_BUILD_HOST=\\"{git_host}\\"',
         f'APP_BUILD_TIME=\\"{git_built}\\"',
+        f'APP_VER_TEXT=\\"{git_version}\\"',
     ],
     sources=[
         "app.c",
@@ -60,7 +73,7 @@ App(
     stack_size=4 * 1024,
     fap_icon="flipperham.png",
     fap_category="Tools",
-    fap_version="1.0.0",
+    fap_version=git_version,
     fap_author="@lu3arn",
     fap_weburl="https://github.com/reynico/flipper-818-aprs/",
     fap_description="APRS VHF/UHF transceiver for Flipper Zero with DRA818/SA818",
