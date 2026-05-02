@@ -1080,6 +1080,7 @@ static void debug_rx_change(VariableItem *item)
 
     app->rx_debug = variable_item_get_current_value_index(item) ? true : false;
     variable_item_set_current_value_text(item, app->rx_debug ? "Yes" : "No");
+    cfgsave(app);
 }
 
 static void notify_change(VariableItem *item)
