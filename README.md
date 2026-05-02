@@ -1,4 +1,6 @@
-# 818 APRS Transceiver
+# (DRA/SA) 818 (V/U) APRS Transceiver
+
+![818 APRS Transceiver](header.jpg)
 
 APRS transceiver for Flipper Zero using DRA818V/SA818V external VHF/UHF radio modules. Full TX and RX with Bell 202 AFSK at 1200 baud.
 
