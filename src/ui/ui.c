@@ -781,6 +781,7 @@ static const float vhf_freqs[] = {
     144.6600f,
     145.5250f,
     432.5000f,
+    0,
 };
 
 static const char *vhf_labels[] = {
@@ -791,6 +792,7 @@ static const char *vhf_labels[] = {
     "144.6600 CN",
     "145.5250 NZ",
     "432.5000 70cm",
+    "Custom",
 };
 
 #define VHF_FREQ_COUNT (sizeof(vhf_freqs) / sizeof(vhf_freqs[0]))
@@ -808,6 +810,12 @@ void settings_menu_build(FlipperHamApp *app)
         app->settings_menu, "Freq", VHF_FREQ_COUNT, vhf_freq_change, app);
     variable_item_set_current_value_index(it, app->dra_freq_index);
     variable_item_set_current_value_text(it, vhf_labels[app->dra_freq_index]);
+
+    if(app->dra_freq_index == VHF_FREQ_COUNT - 1) {
+        it = variable_item_list_add(app->settings_menu, "Custom Freq", 1, NULL, NULL);
+        variable_item_set_current_value_index(it, 0);
+        variable_item_set_current_value_text(it, app->custom_freq_edit[0] ? app->custom_freq_edit : "");
+    }
 
     it = variable_item_list_add(
         app->settings_menu, "APRS Path", sizeof(aprs_paths) / sizeof(aprs_paths[0]), aprs_path_change, app);
@@ -1091,12 +1099,19 @@ static void vhf_freq_change(VariableItem *item)
     if(app->dra_freq_index >= VHF_FREQ_COUNT)
         app->dra_freq_index = 0;
 
-    app->dra_freq = vhf_freqs[app->dra_freq_index];
+    if(app->dra_freq_index == VHF_FREQ_COUNT - 1) {
+        float f = strtof(app->custom_freq_edit, NULL);
+        if(f > 100.0f && f < 500.0f)
+            app->dra_freq = f;
+    } else {
+        app->dra_freq = vhf_freqs[app->dra_freq_index];
+    }
     variable_item_set_current_value_text(item, vhf_labels[app->dra_freq_index]);
 
     if(app->dra.ready)
         dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, app->dra_squelch);
     cfgsave(app);
+    settings_menu_build(app);
 }
 
 void repeat_change(VariableItem *item)
@@ -1155,6 +1170,13 @@ void settings_enter(void *context, uint32_t index)
 {
     FlipperHamApp *app = context;
 
+    if (index == FlipperHamSettingsIndexCustomFreq)
+    {
+        app->return_view = FlipperHamViewSettings;
+        app->freq_edit_active = true;
+        view_dispatcher_stop(app->view_dispatcher);
+        return;
+    }
     if (index == FlipperHamSettingsIndexCustomPath)
     {
         app->text_view = FlipperHamViewSettings;

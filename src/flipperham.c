@@ -100,6 +100,7 @@ void cfgsave(FlipperHamApp *app)
     c->debug_rx = app->rx_debug;
     c->rx_notify = app->rx_notify;
     c->dra_freq_index = app->dra_freq_index;
+    memcpy(c->custom_freq, app->custom_freq_edit, sizeof(c->custom_freq));
     c->dra_volume = app->dra_volume;
     c->dra_squelch = app->dra_squelch;
 
@@ -203,6 +204,8 @@ void cfgload(FlipperHamApp *app)
     app->rx_debug = c->debug_rx ? true : false;
     app->rx_notify = c->rx_notify ? true : false;
     app->dra_freq_index = c->dra_freq_index;
+    memcpy(app->custom_freq_edit, c->custom_freq, sizeof(app->custom_freq_edit));
+    app->custom_freq_edit[sizeof(app->custom_freq_edit) - 1] = 0;
     app->dra_volume = c->dra_volume;
     app->dra_squelch = c->dra_squelch;
 

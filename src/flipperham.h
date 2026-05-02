@@ -28,6 +28,7 @@ typedef struct
     uint16_t leadin_ms;
     uint16_t preamble_ms;
     uint8_t dra_freq_index;
+    char custom_freq[12];
     uint8_t dra_volume;
     uint8_t dra_squelch;
 
@@ -101,6 +102,7 @@ enum
 enum
 {
     FlipperHamSettingsIndexVhfFreq = 0,
+    FlipperHamSettingsIndexCustomFreq,
     FlipperHamSettingsIndexAprsPath,
     FlipperHamSettingsIndexCustomPath,
     FlipperHamSettingsIndexRepeat,

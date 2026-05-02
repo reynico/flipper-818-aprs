@@ -81,6 +81,7 @@ void flipperham_menu_free(FlipperHamApp *app);
 uint32_t repeat_scale(FlipperHamApp *app);
 
 void flipperham_rx_enter(FlipperHamApp *app);
+void flipperham_freq_edit_enter(FlipperHamApp *app);
 
 FlipperHamApp *flipperham_app_alloc(void);
 void flipperham_app_free(FlipperHamApp *app);

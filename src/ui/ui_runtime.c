@@ -316,6 +316,11 @@ FlipperHamApp *flipperham_app_alloc(void)
         };
         if(app->dra_freq_index < sizeof(vhf_freqs) / sizeof(vhf_freqs[0]))
             app->dra_freq = vhf_freqs[app->dra_freq_index];
+        else if(app->custom_freq_edit[0]) {
+            float f = strtof(app->custom_freq_edit, NULL);
+            if(f > 100.0f && f < 500.0f)
+                app->dra_freq = f;
+        }
     }
 
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
@@ -874,4 +879,113 @@ void flipperham_rx_enter(FlipperHamApp *app)
     gui_remove_view_port(app->gui, app->rx_view_port);
     view_port_free(app->rx_view_port);
     app->rx_view_port = NULL;
+}
+
+/* ── Frequency editor ───────────────────────────────────────────── */
+
+static void freq_edit_draw(Canvas *canvas, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+
+    canvas_clear(canvas);
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str_aligned(canvas, 64, 10, AlignCenter, AlignCenter, "Set Frequency (MHz)");
+
+    canvas_set_font(canvas, FontBigNumbers);
+    char ch[2] = {0, 0};
+    uint8_t glyph_h = canvas_current_font_height(canvas);
+    uint8_t x = 16;
+    uint8_t y = 36;
+
+    for(uint8_t i = 0; i < 8; i++) {
+        uint8_t di = i < 3 ? i : i - 1;
+        if(i == 3) {
+            ch[0] = '.';
+        } else {
+            ch[0] = '0' + app->freq_digits[di];
+        }
+        uint8_t cw = canvas_string_width(canvas, ch);
+
+        if(i != 3 && di == app->freq_cursor) {
+            canvas_draw_box(canvas, x - 1, y - glyph_h, cw + 2, glyph_h + 2);
+            canvas_set_color(canvas, ColorWhite);
+            canvas_draw_str(canvas, x, y, ch);
+            canvas_set_color(canvas, ColorBlack);
+        } else {
+            canvas_draw_str(canvas, x, y, ch);
+        }
+        x += cw + 1;
+    }
+}
+
+static void freq_edit_input(InputEvent *event, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+
+    if(event->type != InputTypeShort) return;
+
+    if(event->key == InputKeyBack) {
+        app->freq_edit_active = false;
+    } else if(event->key == InputKeyOk) {
+        app->custom_freq_edit[0] = '0' + app->freq_digits[0];
+        app->custom_freq_edit[1] = '0' + app->freq_digits[1];
+        app->custom_freq_edit[2] = '0' + app->freq_digits[2];
+        app->custom_freq_edit[3] = '.';
+        app->custom_freq_edit[4] = '0' + app->freq_digits[3];
+        app->custom_freq_edit[5] = '0' + app->freq_digits[4];
+        app->custom_freq_edit[6] = '0' + app->freq_digits[5];
+        app->custom_freq_edit[7] = '0' + app->freq_digits[6];
+        app->custom_freq_edit[8] = 0;
+        float f = strtof(app->custom_freq_edit, NULL);
+        if(f > 100.0f && f < 500.0f) {
+            app->dra_freq = f;
+            if(app->dra.ready)
+                dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, app->dra_squelch);
+        }
+        cfgsave(app);
+        app->freq_edit_active = false;
+    } else if(event->key == InputKeyLeft) {
+        if(app->freq_cursor > 0) app->freq_cursor--;
+    } else if(event->key == InputKeyRight) {
+        if(app->freq_cursor < 6) app->freq_cursor++;
+    } else if(event->key == InputKeyUp) {
+        if(app->freq_digits[app->freq_cursor] < 9)
+            app->freq_digits[app->freq_cursor]++;
+        else
+            app->freq_digits[app->freq_cursor] = 0;
+    } else if(event->key == InputKeyDown) {
+        if(app->freq_digits[app->freq_cursor] > 0)
+            app->freq_digits[app->freq_cursor]--;
+        else
+            app->freq_digits[app->freq_cursor] = 9;
+    }
+}
+
+void flipperham_freq_edit_enter(FlipperHamApp *app)
+{
+    float f = app->dra_freq;
+    uint32_t whole = (uint32_t)f;
+    uint32_t frac = (uint32_t)((f - (float)whole) * 10000.0f + 0.5f);
+
+    app->freq_digits[0] = (whole / 100) % 10;
+    app->freq_digits[1] = (whole / 10) % 10;
+    app->freq_digits[2] = whole % 10;
+    app->freq_digits[3] = (frac / 1000) % 10;
+    app->freq_digits[4] = (frac / 100) % 10;
+    app->freq_digits[5] = (frac / 10) % 10;
+    app->freq_digits[6] = frac % 10;
+    app->freq_cursor = 0;
+
+    ViewPort *vp = view_port_alloc();
+    view_port_draw_callback_set(vp, freq_edit_draw, app);
+    view_port_input_callback_set(vp, freq_edit_input, app);
+    gui_add_view_port(app->gui, vp, GuiLayerFullscreen);
+
+    while(app->freq_edit_active) {
+        view_port_update(vp);
+        furi_delay_ms(50);
+    }
+
+    gui_remove_view_port(app->gui, vp);
+    view_port_free(vp);
 }

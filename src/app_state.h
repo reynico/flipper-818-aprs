@@ -150,6 +150,7 @@ typedef struct FlipperHamApp
     bool rx_active;
     float dra_freq;
     uint8_t dra_freq_index;
+    char custom_freq_edit[12];
     uint8_t dra_volume;
     uint8_t dra_squelch;
     bool rx_debug;
@@ -159,4 +160,8 @@ typedef struct FlipperHamApp
     uint8_t rx_led_state;
     uint32_t rx_led_tick;
     ViewPort *rx_view_port;
+
+    uint8_t freq_digits[7];
+    uint8_t freq_cursor;
+    bool freq_edit_active;
 } FlipperHamApp;
