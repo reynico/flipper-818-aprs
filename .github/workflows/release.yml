@@ -1,0 +1,37 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ufbt
+        run: pip install ufbt
+
+      - name: Update SDK
+        run: ufbt update
+
+      - name: Build FAP
+        run: ufbt
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 818aprs
+          path: dist/818aprs.fap
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/818aprs.fap
+          generate_release_notes: true
