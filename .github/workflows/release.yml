@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -30,6 +32,42 @@ jobs:
       - name: Build FAP
         run: ufbt
 
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --sort=-version:refname | head -2 | tail -1)
+          if [ -z "$PREV_TAG" ] || [ "$PREV_TAG" = "${{ github.ref_name }}" ]; then
+            PREV_TAG=$(git rev-list --max-parents=0 HEAD)
+          fi
+          echo "## What's Changed" > changelog.md
+          echo "" >> changelog.md
+
+          # Features
+          FEATURES=$(git log ${PREV_TAG}..${{ github.ref_name }} --pretty=format:"%s" | grep -iE "^(ui|afsk|aprs|rx|refactor|rebrand|fam):" | sed 's/^/- /' || true)
+          if [ -n "$FEATURES" ]; then
+            echo "### Features & Improvements" >> changelog.md
+            echo "$FEATURES" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          # Fixes
+          FIXES=$(git log ${PREV_TAG}..${{ github.ref_name }} --pretty=format:"%s" | grep -iE "^fix:" | sed 's/^/- /' || true)
+          if [ -n "$FIXES" ]; then
+            echo "### Bug Fixes" >> changelog.md
+            echo "$FIXES" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          # CI/Docs/Other
+          OTHER=$(git log ${PREV_TAG}..${{ github.ref_name }} --pretty=format:"%s" | grep -viE "^(ui|afsk|aprs|rx|refactor|rebrand|fam|fix|ci|docs|readme|gitignore|tools):" | sed 's/^/- /' || true)
+          if [ -n "$OTHER" ]; then
+            echo "### Other" >> changelog.md
+            echo "$OTHER" >> changelog.md
+            echo "" >> changelog.md
+          fi
+
+          echo "**Full Changelog**: https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ github.ref_name }}" >> changelog.md
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -40,4 +78,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/818aprs.fap
-          generate_release_notes: true
+          body_path: changelog.md
