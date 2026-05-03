@@ -157,6 +157,85 @@ static bool parse_message(const char *s, uint16_t len, AprsDecoded *out)
     return true;
 }
 
+static bool parse_mic_e(const AfskFrame *frame, const uint8_t *info, uint16_t len, AprsDecoded *out)
+{
+    if(len < 9) return false;
+
+    const char *dst = frame->dst;
+    uint8_t dst_len = strlen(dst);
+    if(dst_len < 6) return false;
+
+    static const uint8_t digit_map[128] = {
+        ['0'] = 0, ['1'] = 1, ['2'] = 2, ['3'] = 3, ['4'] = 4,
+        ['5'] = 5, ['6'] = 6, ['7'] = 7, ['8'] = 8, ['9'] = 9,
+        ['A'] = 0, ['B'] = 1, ['C'] = 2,
+        ['K'] = 0, ['L'] = 0,
+        ['P'] = 0, ['Q'] = 1, ['R'] = 2, ['S'] = 3, ['T'] = 4,
+        ['U'] = 5, ['V'] = 6, ['W'] = 7, ['X'] = 8, ['Y'] = 9,
+        ['Z'] = 0,
+    };
+
+    static const uint8_t ns_map[128] = {
+        ['0'] = 0, ['1'] = 0, ['2'] = 0, ['3'] = 0, ['4'] = 0,
+        ['5'] = 0, ['6'] = 0, ['7'] = 0, ['8'] = 0, ['9'] = 0,
+        ['L'] = 0, ['Z'] = 0,
+        ['A'] = 0, ['B'] = 0, ['C'] = 0, ['K'] = 0,
+        ['P'] = 1, ['Q'] = 1, ['R'] = 1, ['S'] = 1, ['T'] = 1,
+        ['U'] = 1, ['V'] = 1, ['W'] = 1, ['X'] = 1, ['Y'] = 1,
+    };
+
+    uint8_t d[6];
+    for(uint8_t i = 0; i < 6; i++) {
+        uint8_t c = (uint8_t)dst[i];
+        if(c >= 128) return false;
+        d[i] = digit_map[c];
+    }
+
+    float lat_deg = (float)(d[0] * 10 + d[1]);
+    float lat_min = (float)(d[2] * 10 + d[3]) + (float)(d[4] * 10 + d[5]) / 100.0f;
+    out->lat = lat_deg + lat_min / 60.0f;
+
+    uint8_t ns_bit = ns_map[(uint8_t)dst[3] < 128 ? (uint8_t)dst[3] : 0];
+    if(!ns_bit) out->lat = -out->lat;
+
+    uint8_t d28 = info[1] - 28;
+    uint8_t d29 = info[2] - 28;
+    uint8_t d30 = info[3] - 28;
+
+    int lon_deg = (int)d28;
+    uint8_t lon_offset = 0;
+    uint8_t c4 = (uint8_t)dst[4];
+    if(c4 >= 'P') lon_offset = 1;
+    if(lon_offset) lon_deg += 100;
+    if(lon_deg >= 180 && lon_deg <= 189) lon_deg -= 80;
+    else if(lon_deg >= 190 && lon_deg <= 199) lon_deg -= 190;
+
+    int lon_min = (int)d29;
+    if(lon_min >= 60) lon_min -= 60;
+
+    float lon_frac = (float)d30 / 100.0f;
+    out->lon = (float)lon_deg + ((float)lon_min + lon_frac) / 60.0f;
+
+    uint8_t ew_bit = 0;
+    uint8_t c5 = (uint8_t)dst[5];
+    if(c5 >= 'P') ew_bit = 1;
+    if(!ew_bit) out->lon = -out->lon;
+
+    out->has_pos = true;
+
+    out->symbol[0] = (char)info[7];
+    out->symbol[1] = (char)info[8];
+
+    if(len > 9) {
+        uint16_t clen = len - 9;
+        if(clen > sizeof(out->comment) - 1) clen = sizeof(out->comment) - 1;
+        memcpy(out->comment, info + 9, clen);
+        out->comment[clen] = 0;
+    }
+
+    return true;
+}
+
 bool aprs_decode(const AfskFrame *frame, AprsDecoded *out)
 {
     const char *data;
@@ -180,6 +259,9 @@ bool aprs_decode(const AfskFrame *frame, AprsDecoded *out)
     out->type = data[0];
 
     switch(out->type) {
+    case '`':
+    case '\'':
+        return parse_mic_e(frame, frame->payload + 1, len - 1, out);
     case '!':
     case '=':
         return parse_position(data + 1, len - 1, out);
