@@ -1270,34 +1270,19 @@ void pos_edit_enter(void *context, uint32_t index)
 
     if (index == 1)
     {
-        const char *title;
-
-        title = "Latitude";
-        if (app->position_sel >= FlipperHamPositionIndexBase)
-            title = "Edit latitude";
         app->text_mode = 7;
-        app->text_view = FlipperHamViewPosEdit;
-        text_input_reset(app->text_input);
-        text_input_set_header_text(app->text_input, title);
-        text_input_set_result_callback(app->text_input, position_save, app, app->p_lat_edit,
-                                       sizeof(app->p_lat_edit), false);
-        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewTextInput);
+        flipperham_coord_edit(app, app->p_lat_edit, sizeof(app->p_lat_edit), false);
+        position_save(app);
+        pos_edit_menu_build(app);
         return;
     }
 
     if (index == 2)
     {
-        const char *title;
-
-        title = "Longitude";
-        if (app->position_sel >= FlipperHamPositionIndexBase)
-            title = "Edit longitude";
         app->text_mode = 8;
-        app->text_view = FlipperHamViewPosEdit;
-        text_input_reset(app->text_input);
-        text_input_set_header_text(app->text_input, title);
-        text_input_set_result_callback(app->text_input, position_save, app, app->p_lon_edit,
-                                       sizeof(app->p_lon_edit), false);
+        flipperham_coord_edit(app, app->p_lon_edit, sizeof(app->p_lon_edit), true);
+        position_save(app);
+        pos_edit_menu_build(app);
         view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewTextInput);
         return;
     }

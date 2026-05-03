@@ -140,17 +140,19 @@ static void positionActionDo(void *context, uint32_t index)
 
     if (index == FlipperHamPosEditIndexLat)
     {
-        title = "Edit latitude";
-        out = app->p_lat_edit;
-        n = sizeof(app->p_lat_edit);
         app->text_mode = 7;
+        flipperham_coord_edit(app, app->p_lat_edit, sizeof(app->p_lat_edit), false);
+        position_save(app);
+        positionActionBuild(app);
+        return;
     }
     else if (index == FlipperHamPosEditIndexLon)
     {
-        title = "Edit longitude";
-        out = app->p_lon_edit;
-        n = sizeof(app->p_lon_edit);
         app->text_mode = 8;
+        flipperham_coord_edit(app, app->p_lon_edit, sizeof(app->p_lon_edit), true);
+        position_save(app);
+        positionActionBuild(app);
+        return;
     }
     else
         title = "Edit name";

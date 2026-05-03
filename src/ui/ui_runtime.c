@@ -1029,3 +1029,156 @@ void flipperham_freq_edit_enter(FlipperHamApp *app)
     gui_remove_view_port(app->gui, vp);
     view_port_free(vp);
 }
+
+/* ── Coordinate editor ──────────────────────────────────────────── */
+
+static void coord_edit_draw(Canvas *canvas, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+
+    canvas_clear(canvas);
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str_aligned(canvas, 64, 10, AlignCenter, AlignCenter,
+        app->coord_is_lon ? "Longitude" : "Latitude");
+
+    canvas_set_font(canvas, FontBigNumbers);
+    uint8_t nd = app->coord_is_lon ? 8 : 7;
+    uint8_t dot_pos = app->coord_is_lon ? 3 : 2;
+    char ch[2] = {0, 0};
+    uint8_t glyph_h = canvas_current_font_height(canvas);
+    uint8_t x = app->coord_is_lon ? 4 : 10;
+    uint8_t y = 36;
+
+    ch[0] = app->coord_sign ? '-' : '+';
+    canvas_set_font(canvas, FontPrimary);
+    if(app->coord_cursor == 0) {
+        uint8_t sw = canvas_string_width(canvas, ch);
+        canvas_draw_box(canvas, x - 1, y - glyph_h + 4, sw + 2, glyph_h + 2);
+        canvas_set_color(canvas, ColorWhite);
+        canvas_draw_str(canvas, x, y, ch);
+        canvas_set_color(canvas, ColorBlack);
+    } else {
+        canvas_draw_str(canvas, x, y, ch);
+    }
+    x += 10;
+
+    canvas_set_font(canvas, FontBigNumbers);
+    glyph_h = canvas_current_font_height(canvas);
+
+    for(uint8_t i = 0; i < nd; i++) {
+        if(i == dot_pos) {
+            canvas_set_font(canvas, FontPrimary);
+            canvas_draw_str(canvas, x, y, ".");
+            x += 5;
+            canvas_set_font(canvas, FontBigNumbers);
+        }
+        ch[0] = '0' + app->coord_digits[i];
+        uint8_t cw = canvas_string_width(canvas, ch);
+
+        if(i + 1 == app->coord_cursor) {
+            canvas_draw_box(canvas, x - 1, y - glyph_h, cw + 2, glyph_h + 2);
+            canvas_set_color(canvas, ColorWhite);
+            canvas_draw_str(canvas, x, y, ch);
+            canvas_set_color(canvas, ColorBlack);
+        } else {
+            canvas_draw_str(canvas, x, y, ch);
+        }
+        x += cw + 1;
+    }
+}
+
+static void coord_edit_input(InputEvent *event, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+    uint8_t nd = app->coord_is_lon ? 8 : 7;
+
+    if(event->type != InputTypeShort) return;
+
+    if(event->key == InputKeyBack) {
+        app->coord_edit_active = false;
+    } else if(event->key == InputKeyOk) {
+        app->coord_edit_active = false;
+    } else if(event->key == InputKeyLeft) {
+        if(app->coord_cursor > 0) app->coord_cursor--;
+    } else if(event->key == InputKeyRight) {
+        if(app->coord_cursor < nd) app->coord_cursor++;
+    } else if(event->key == InputKeyUp) {
+        if(app->coord_cursor == 0) {
+            app->coord_sign = !app->coord_sign;
+        } else {
+            uint8_t di = app->coord_cursor - 1;
+            if(app->coord_digits[di] < 9) app->coord_digits[di]++;
+            else app->coord_digits[di] = 0;
+        }
+    } else if(event->key == InputKeyDown) {
+        if(app->coord_cursor == 0) {
+            app->coord_sign = !app->coord_sign;
+        } else {
+            uint8_t di = app->coord_cursor - 1;
+            if(app->coord_digits[di] > 0) app->coord_digits[di]--;
+            else app->coord_digits[di] = 9;
+        }
+    }
+}
+
+void flipperham_coord_edit(FlipperHamApp *app, char *buf, uint8_t buf_size, bool is_lon)
+{
+    float val = strtof(buf, NULL);
+    app->coord_sign = val < 0;
+    if(val < 0) val = -val;
+    app->coord_is_lon = is_lon;
+    app->coord_cursor = 0;
+
+    uint32_t whole = (uint32_t)val;
+    uint32_t frac = (uint32_t)((val - (float)whole) * 100000.0f + 0.5f);
+
+    if(is_lon) {
+        app->coord_digits[0] = (whole / 100) % 10;
+        app->coord_digits[1] = (whole / 10) % 10;
+        app->coord_digits[2] = whole % 10;
+        app->coord_digits[3] = (frac / 10000) % 10;
+        app->coord_digits[4] = (frac / 1000) % 10;
+        app->coord_digits[5] = (frac / 100) % 10;
+        app->coord_digits[6] = (frac / 10) % 10;
+        app->coord_digits[7] = frac % 10;
+    } else {
+        app->coord_digits[0] = (whole / 10) % 10;
+        app->coord_digits[1] = whole % 10;
+        app->coord_digits[2] = (frac / 10000) % 10;
+        app->coord_digits[3] = (frac / 1000) % 10;
+        app->coord_digits[4] = (frac / 100) % 10;
+        app->coord_digits[5] = (frac / 10) % 10;
+        app->coord_digits[6] = frac % 10;
+    }
+
+    app->coord_edit_active = true;
+
+    ViewPort *vp = view_port_alloc();
+    view_port_draw_callback_set(vp, coord_edit_draw, app);
+    view_port_input_callback_set(vp, coord_edit_input, app);
+    gui_add_view_port(app->gui, vp, GuiLayerFullscreen);
+
+    while(app->coord_edit_active) {
+        view_port_update(vp);
+        furi_delay_ms(50);
+    }
+
+    gui_remove_view_port(app->gui, vp);
+    view_port_free(vp);
+
+    if(is_lon) {
+        snprintf(buf, buf_size, "%s%d%d%d.%d%d%d%d%d",
+            app->coord_sign ? "-" : "",
+            (int)app->coord_digits[0], (int)app->coord_digits[1],
+            (int)app->coord_digits[2], (int)app->coord_digits[3],
+            (int)app->coord_digits[4], (int)app->coord_digits[5],
+            (int)app->coord_digits[6], (int)app->coord_digits[7]);
+    } else {
+        snprintf(buf, buf_size, "%s%d%d.%d%d%d%d%d",
+            app->coord_sign ? "-" : "",
+            (int)app->coord_digits[0], (int)app->coord_digits[1],
+            (int)app->coord_digits[2], (int)app->coord_digits[3],
+            (int)app->coord_digits[4], (int)app->coord_digits[5],
+            (int)app->coord_digits[6]);
+    }
+}

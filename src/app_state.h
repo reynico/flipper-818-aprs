@@ -164,4 +164,10 @@ typedef struct FlipperHamApp
     uint8_t freq_digits[7];
     uint8_t freq_cursor;
     bool freq_edit_active;
+
+    uint8_t coord_digits[8];
+    uint8_t coord_cursor;
+    bool coord_sign;
+    bool coord_is_lon;
+    bool coord_edit_active;
 } FlipperHamApp;
