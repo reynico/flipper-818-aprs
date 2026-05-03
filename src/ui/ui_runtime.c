@@ -10,9 +10,14 @@
 #include <notification/notification.h>
 #include <notification/notification_messages.h>
 
+#include <storage/storage.h>
+#include <furi_hal_rtc.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define RX_LOG_FILE "/ext/ham/rx_log.txt"
 
 static void status_input(InputEvent *event, void *context);
 static bool dra818v_ensure_ready(FlipperHamApp *app);
@@ -672,6 +677,40 @@ static bool dra818v_ensure_ready(FlipperHamApp *app)
     return true;
 }
 
+static void rx_log_to_sd(AprsDecoded *dec)
+{
+    Storage *storage = furi_record_open(RECORD_STORAGE);
+    File *file = storage_file_alloc(storage);
+
+    storage_common_mkdir(storage, "/ext/ham");
+
+    if(storage_file_open(file, RX_LOG_FILE, FSAM_WRITE, FSOM_OPEN_APPEND)) {
+        DateTime dt;
+        furi_hal_rtc_get_datetime(&dt);
+
+        char line[192];
+        const char *msg = dec->has_msg ? dec->msg_text : dec->comment;
+        int len = snprintf(line, sizeof(line),
+            "%04u-%02u-%02u %02u:%02u:%02u %s",
+            dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second,
+            dec->src);
+
+        if(dec->has_pos)
+            len += snprintf(line + len, sizeof(line) - len,
+                " [%.5f,%.5f]", (double)dec->lat, (double)dec->lon);
+
+        if(msg && msg[0])
+            len += snprintf(line + len, sizeof(line) - len, " %s", msg);
+
+        line[len++] = '\n';
+        storage_file_write(file, line, len);
+    }
+
+    storage_file_close(file);
+    storage_file_free(file);
+    furi_record_close(RECORD_STORAGE);
+}
+
 static void rx_frame_callback(AfskFrame *frame, void *ctx)
 {
     FlipperHamApp *app = ctx;
@@ -700,6 +739,7 @@ static void rx_frame_callback(AfskFrame *frame, void *ctx)
         app->rx_msg_scroll = 0;
         app->has_decoded = true;
         app->rx_count++;
+        rx_log_to_sd(&dec);
     }
 }
 
