@@ -35,6 +35,8 @@ typedef struct FlipperHamApp
     VariableItemList *ham_tx_menu;
     VariableItemList *ssid_menu;
     VariableItemList *pos_edit_menu;
+    VariableItemList *tx_settings_menu;
+    VariableItemList *rx_settings_menu;
     TextInput *text_input;
     Widget *readme_widget;
     View *splash_view;

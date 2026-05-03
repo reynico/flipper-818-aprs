@@ -470,7 +470,7 @@ uint32_t flipperham_ham_exit_callback(void *context)
 {
     UNUSED(context);
 
-    return FlipperHamViewMenu;
+    return FlipperHamViewSettings;
 }
 
 uint32_t flipperham_ham_tx_exit_callback(void *context)
@@ -491,7 +491,7 @@ uint32_t book_exit(void *context)
 {
     UNUSED(context);
 
-    return FlipperHamViewMenu;
+    return FlipperHamViewSettings;
 }
 
 uint32_t book_action_exit(void *context)
@@ -499,6 +499,18 @@ uint32_t book_action_exit(void *context)
     UNUSED(context);
 
     return FlipperHamViewBook;
+}
+
+uint32_t flipperham_tx_settings_exit_callback(void *context)
+{
+    UNUSED(context);
+    return FlipperHamViewSettings;
+}
+
+uint32_t flipperham_rx_settings_exit_callback(void *context)
+{
+    UNUSED(context);
+    return FlipperHamViewSettings;
 }
 
 uint32_t flipperham_text_exit_callback(void *context)
@@ -526,13 +538,6 @@ void flipperham_menu_callback(void *context, uint32_t index)
         settings_menu_build(app);
         view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewSettings);
     }
-    if (index == FlipperHamMenuIndexCallbook)
-    {
-        book_menu_build(app);
-        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewBook);
-    }
-    if (index == FlipperHamMenuIndexHam)
-        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewHam);
     if (index == FlipperHamMenuIndexReadme)
     {
         splash_request_mode(app);
@@ -564,6 +569,8 @@ void flipperham_send_callback(void *context, uint32_t index)
     if (index == FlipperHamSendIndexPosition)
     {
         position_menu_build(app);
+        view_set_previous_callback(submenu_get_view(app->position_menu),
+                                   flipperham_position_exit_callback);
         view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewPosition);
     }
 
@@ -800,7 +807,6 @@ static const char *vhf_labels[] = {
 void settings_menu_build(FlipperHamApp *app)
 {
     VariableItem *it;
-    char a[16];
 
     variable_item_list_reset(app->settings_menu);
     if (app->aprs_path_index >= sizeof(aprs_paths) / sizeof(aprs_paths[0]))
@@ -817,6 +823,10 @@ void settings_menu_build(FlipperHamApp *app)
         variable_item_set_current_value_text(it, app->custom_freq_edit[0] ? app->custom_freq_edit : "");
     }
 
+    variable_item_list_add(app->settings_menu, "My Callsign", 0, NULL, NULL);
+    variable_item_list_add(app->settings_menu, "Destinations", 0, NULL, NULL);
+    variable_item_list_add(app->settings_menu, "Locations", 0, NULL, NULL);
+
     it = variable_item_list_add(
         app->settings_menu, "APRS Path", sizeof(aprs_paths) / sizeof(aprs_paths[0]), aprs_path_change, app);
     variable_item_set_current_value_index(it, app->aprs_path_index);
@@ -826,40 +836,59 @@ void settings_menu_build(FlipperHamApp *app)
     variable_item_set_current_value_index(it, 0);
     variable_item_set_current_value_text(it, app->aprs_path_edit[0] ? app->aprs_path_edit : "");
 
-    it = variable_item_list_add(app->settings_menu, "Repeat TX", 5, repeat_change, app);
+    variable_item_list_add(app->settings_menu, "TX Settings", 0, NULL, NULL);
+    variable_item_list_add(app->settings_menu, "RX Settings", 0, NULL, NULL);
+}
+
+void tx_settings_menu_build(FlipperHamApp *app)
+{
+    VariableItem *it;
+    char a[16];
+
+    variable_item_list_reset(app->tx_settings_menu);
+
+    it = variable_item_list_add(app->tx_settings_menu, "Repeat TX", 5, repeat_change, app);
     variable_item_set_current_value_index(it, app->repeat_n - 1);
     snprintf(a, sizeof(a), "%u", app->repeat_n);
     variable_item_set_current_value_text(it, a);
 
-    it = variable_item_list_add(app->settings_menu, "Lead-in (ms)", 21, leadin_change, app);
+    it = variable_item_list_add(app->tx_settings_menu, "Lead-in (ms)", 21, leadin_change, app);
     variable_item_set_current_value_index(it, app->leadin_ms / 50);
     snprintf(a, sizeof(a), "%u", app->leadin_ms);
     variable_item_set_current_value_text(it, a);
 
-    it = variable_item_list_add(app->settings_menu, "Preamble (ms)", 21, preamble_change, app);
+    it = variable_item_list_add(app->tx_settings_menu, "Preamble (ms)", 21, preamble_change, app);
     variable_item_set_current_value_index(it, app->preamble_ms / 50);
     snprintf(a, sizeof(a), "%u", app->preamble_ms);
     variable_item_set_current_value_text(it, a);
 
-    it = variable_item_list_add(app->settings_menu, "Volume", 8, volume_change, app);
+    it = variable_item_list_add(app->tx_settings_menu, "Debug TX", 2, debug_change, app);
+    variable_item_set_current_value_index(it, app->debug_tx ? 1 : 0);
+    variable_item_set_current_value_text(it, app->debug_tx ? "Yes" : "No");
+}
+
+void rx_settings_menu_build(FlipperHamApp *app)
+{
+    VariableItem *it;
+    char a[16];
+
+    variable_item_list_reset(app->rx_settings_menu);
+
+    it = variable_item_list_add(app->rx_settings_menu, "Volume", 8, volume_change, app);
     variable_item_set_current_value_index(it, app->dra_volume - 1);
     snprintf(a, sizeof(a), "%u", app->dra_volume);
     variable_item_set_current_value_text(it, a);
 
-    it = variable_item_list_add(app->settings_menu, "Squelch", 9, squelch_change, app);
+    it = variable_item_list_add(app->rx_settings_menu, "Squelch", 9, squelch_change, app);
     variable_item_set_current_value_index(it, app->dra_squelch);
     snprintf(a, sizeof(a), "%u", app->dra_squelch);
     variable_item_set_current_value_text(it, a);
 
-    it = variable_item_list_add(app->settings_menu, "Debug TX", 2, debug_change, app);
-    variable_item_set_current_value_index(it, app->debug_tx ? 1 : 0);
-    variable_item_set_current_value_text(it, app->debug_tx ? "Yes" : "No");
-
-    it = variable_item_list_add(app->settings_menu, "Sound/Vibro", 2, notify_change, app);
+    it = variable_item_list_add(app->rx_settings_menu, "Sound/Vibro", 2, notify_change, app);
     variable_item_set_current_value_index(it, app->rx_notify ? 1 : 0);
     variable_item_set_current_value_text(it, app->rx_notify ? "Yes" : "No");
 
-    it = variable_item_list_add(app->settings_menu, "Debug RX", 2, debug_rx_change, app);
+    it = variable_item_list_add(app->rx_settings_menu, "Debug RX", 2, debug_rx_change, app);
     variable_item_set_current_value_index(it, app->rx_debug ? 1 : 0);
     variable_item_set_current_value_text(it, app->rx_debug ? "Yes" : "No");
 }
@@ -1170,22 +1199,62 @@ void ssid_enter(void *context, uint32_t index)
 void settings_enter(void *context, uint32_t index)
 {
     FlipperHamApp *app = context;
+    bool has_custom = (app->dra_freq_index == VHF_FREQ_COUNT - 1);
+    uint32_t adj = has_custom ? 0 : 1;
 
-    if (index == FlipperHamSettingsIndexCustomFreq)
-    {
+    if(has_custom && index == FlipperHamSettingsIndexCustomFreq) {
         app->return_view = FlipperHamViewSettings;
         app->freq_edit_active = true;
         view_dispatcher_stop(app->view_dispatcher);
         return;
     }
-    if (index == FlipperHamSettingsIndexCustomPath)
-    {
+    if(index == FlipperHamSettingsIndexMyCallsign - adj) {
+        ham_menu_build(app);
+        view_set_previous_callback(variable_item_list_get_view(app->ham_menu),
+                                   flipperham_tx_settings_exit_callback);
+        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewHam);
+        return;
+    }
+    if(index == FlipperHamSettingsIndexDestinations - adj) {
+        book_menu_build(app);
+        view_set_previous_callback(submenu_get_view(app->book_menu),
+                                   flipperham_tx_settings_exit_callback);
+        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewBook);
+        return;
+    }
+    if(index == FlipperHamSettingsIndexLocations - adj) {
+        uint8_t i;
+        submenu_reset(app->position_menu);
+        submenu_set_header(app->position_menu, "Locations");
+        submenu_add_item(app->position_menu, "Add new...", FlipperHamPositionIndexAdd, p, app);
+        for(i = 0; i < TXT_N; i++) {
+            if(!app->pos_used[i] || !app->pos_name[i][0]) continue;
+            submenu_add_item_ex(app->position_menu, app->pos_name[i],
+                FlipperHamPositionIndexBase + i, position_pick_edit, app);
+        }
+        view_set_previous_callback(submenu_get_view(app->position_menu),
+                                   flipperham_tx_settings_exit_callback);
+        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewPosition);
+        return;
+    }
+    if(index == FlipperHamSettingsIndexCustomPath - adj) {
         app->text_view = FlipperHamViewSettings;
         text_input_reset(app->text_input);
         text_input_set_header_text(app->text_input, "Custom Path");
         text_input_set_result_callback(app->text_input, aprs_path_custom_save, app, app->aprs_path_edit,
                                        APRS_PATH_LEN, false);
         view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewTextInput);
+        return;
+    }
+    if(index == FlipperHamSettingsIndexTxSettings - adj) {
+        tx_settings_menu_build(app);
+        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewTxSettings);
+        return;
+    }
+    if(index == FlipperHamSettingsIndexRxSettings - adj) {
+        rx_settings_menu_build(app);
+        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewRxSettings);
+        return;
     }
 }
 

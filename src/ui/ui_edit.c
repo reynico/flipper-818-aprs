@@ -416,6 +416,24 @@ void p(void *context, uint32_t index)
     view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewPosEdit);
 }
 
+void position_pick_edit(void *context, InputType input_type, uint32_t index)
+{
+    FlipperHamApp *app = context;
+    uint8_t i;
+
+    i = index - FlipperHamPositionIndexBase;
+    if(i >= TXT_N) return;
+    if(input_type != InputTypeShort) return;
+
+    app->position_sel = index;
+    app->pos_index = i;
+    snprintf(app->p_name_edit, sizeof(app->p_name_edit), "%s", app->pos_name[i]);
+    snprintf(app->p_lat_edit, sizeof(app->p_lat_edit), "%s", app->pos_lat[i]);
+    snprintf(app->p_lon_edit, sizeof(app->p_lon_edit), "%s", app->pos_lon[i]);
+    positionActionBuild(app);
+    view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewPosAction);
+}
+
 void position_pick(void *context, InputType input_type, uint32_t index)
 {
     FlipperHamApp *app = context;
@@ -425,27 +443,15 @@ void position_pick(void *context, InputType input_type, uint32_t index)
     if (i >= TXT_N)
         return;
 
-    if (input_type == InputTypeShort)
-    {
-        app->position_sel = index;
-        app->tx_type = 3;
-        app->tx_msg_index = i;
-        app->return_view = FlipperHamViewPosition;
-        app->send_requested = true;
-        view_dispatcher_stop(app->view_dispatcher);
-        return;
-    }
-
-    if (input_type != InputTypeLong)
+    if (input_type != InputTypeShort)
         return;
 
     app->position_sel = index;
-    app->pos_index = i;
-    snprintf(app->p_name_edit, sizeof(app->p_name_edit), "%s", app->pos_name[i]);
-    snprintf(app->p_lat_edit, sizeof(app->p_lat_edit), "%s", app->pos_lat[i]);
-    snprintf(app->p_lon_edit, sizeof(app->p_lon_edit), "%s", app->pos_lon[i]);
-    positionActionBuild(app);
-    view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewPosAction);
+    app->tx_type = 3;
+    app->tx_msg_index = i;
+    app->return_view = FlipperHamViewPosition;
+    app->send_requested = true;
+    view_dispatcher_stop(app->view_dispatcher);
 }
 
 void position_save(void *context)

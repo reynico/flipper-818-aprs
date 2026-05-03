@@ -79,6 +79,8 @@ enum
     FlipperHamViewHamTx,
     FlipperHamViewReadme,
     FlipperHamViewSplash,
+    FlipperHamViewTxSettings,
+    FlipperHamViewRxSettings,
 };
 
 enum
@@ -86,8 +88,6 @@ enum
     FlipperHamMenuIndexSend = 0,
     FlipperHamMenuIndexRx,
     FlipperHamMenuIndexSettings,
-    FlipperHamMenuIndexCallbook,
-    FlipperHamMenuIndexHam,
     FlipperHamMenuIndexReadme,
 };
 
@@ -103,14 +103,29 @@ enum
 {
     FlipperHamSettingsIndexVhfFreq = 0,
     FlipperHamSettingsIndexCustomFreq,
+    FlipperHamSettingsIndexMyCallsign,
+    FlipperHamSettingsIndexDestinations,
+    FlipperHamSettingsIndexLocations,
     FlipperHamSettingsIndexAprsPath,
     FlipperHamSettingsIndexCustomPath,
-    FlipperHamSettingsIndexRepeat,
-    FlipperHamSettingsIndexLeadin,
-    FlipperHamSettingsIndexPreamble,
-    FlipperHamSettingsIndexVolume,
-    FlipperHamSettingsIndexSquelch,
-    FlipperHamSettingsIndexDebug,
+    FlipperHamSettingsIndexTxSettings,
+    FlipperHamSettingsIndexRxSettings,
+};
+
+enum
+{
+    FlipperHamTxSettingsIndexRepeat = 0,
+    FlipperHamTxSettingsIndexLeadin,
+    FlipperHamTxSettingsIndexPreamble,
+    FlipperHamTxSettingsIndexDebugTx,
+};
+
+enum
+{
+    FlipperHamRxSettingsIndexVolume = 0,
+    FlipperHamRxSettingsIndexSquelch,
+    FlipperHamRxSettingsIndexSoundVibro,
+    FlipperHamRxSettingsIndexDebugRx,
 };
 
 enum

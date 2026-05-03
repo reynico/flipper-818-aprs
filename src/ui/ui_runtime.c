@@ -64,6 +64,8 @@ void flipperham_menu_free(FlipperHamApp *app)
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewSsid);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewHam);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewHamTx);
+        view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewTxSettings);
+        view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewRxSettings);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewTextInput);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewReadme);
         view_dispatcher_free(app->view_dispatcher);
@@ -166,6 +168,18 @@ void flipperham_menu_free(FlipperHamApp *app)
         app->pos_edit_menu = NULL;
     }
 
+    if (app->tx_settings_menu)
+    {
+        variable_item_list_free(app->tx_settings_menu);
+        app->tx_settings_menu = NULL;
+    }
+
+    if (app->rx_settings_menu)
+    {
+        variable_item_list_free(app->rx_settings_menu);
+        app->rx_settings_menu = NULL;
+    }
+
     if (app->ssid_menu)
     {
         variable_item_list_free(app->ssid_menu);
@@ -237,6 +251,8 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->ham_tx_menu = variable_item_list_alloc();
     app->ssid_menu = variable_item_list_alloc();
     app->pos_edit_menu = variable_item_list_alloc();
+    app->tx_settings_menu = variable_item_list_alloc();
+    app->rx_settings_menu = variable_item_list_alloc();
     app->text_input = text_input_alloc();
     app->readme_widget = widget_alloc();
     app->splash_view = NULL;
@@ -337,11 +353,6 @@ FlipperHamApp *flipperham_app_alloc(void)
         app->submenu, "Receive", FlipperHamMenuIndexRx, flipperham_menu_callback, app);
     submenu_add_item(app->submenu, "Settings", FlipperHamMenuIndexSettings,
                      flipperham_menu_callback, app);
-    submenu_add_item(app->submenu, "Callbook", FlipperHamMenuIndexCallbook,
-                     flipperham_menu_callback, app);
-    if (app->ham_ok)
-        submenu_add_item(app->submenu, "Ham Radio", FlipperHamMenuIndexHam,
-                         flipperham_menu_callback, app);
     submenu_add_item(app->submenu, "About", FlipperHamMenuIndexReadme,
                      flipperham_menu_callback, app);
 
@@ -364,6 +375,8 @@ FlipperHamApp *flipperham_app_alloc(void)
     ssidfix(app);
     ham_menu_build(app);
     ham_tx_menu_build(app);
+    tx_settings_menu_build(app);
+    rx_settings_menu_build(app);
 
     snprintf(
         app->readme_h, sizeof(app->readme_h),
@@ -407,6 +420,10 @@ FlipperHamApp *flipperham_app_alloc(void)
                                flipperham_ham_exit_callback);
     view_set_previous_callback(variable_item_list_get_view(app->ham_tx_menu),
                                flipperham_ham_tx_exit_callback);
+    view_set_previous_callback(variable_item_list_get_view(app->tx_settings_menu),
+                               flipperham_tx_settings_exit_callback);
+    view_set_previous_callback(variable_item_list_get_view(app->rx_settings_menu),
+                               flipperham_rx_settings_exit_callback);
     view_set_previous_callback(text_input_get_view(app->text_input), flipperham_text_exit_callback);
     view_set_previous_callback(widget_get_view(app->readme_widget),
                                flipperham_readme_exit_callback);
@@ -449,6 +466,10 @@ FlipperHamApp *flipperham_app_alloc(void)
                              variable_item_list_get_view(app->ham_menu));
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewHamTx,
                              variable_item_list_get_view(app->ham_tx_menu));
+    view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewTxSettings,
+                             variable_item_list_get_view(app->tx_settings_menu));
+    view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewRxSettings,
+                             variable_item_list_get_view(app->rx_settings_menu));
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewTextInput,
                              text_input_get_view(app->text_input));
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewReadme,
