@@ -262,7 +262,7 @@ int aprs_pos(char *out, uint16_t n, const char *name, const char *lat, const cha
         return 0;
     if (aprs_lon(b, sizeof(b), lon) <= 0)
         return 0;
-    return snprintf(out, n, "!%s/%s-%s", a, b, name ? name : "");
+    return snprintf(out, n, "!%s/%sM%s", a, b, name ? name : "");
 }
 
 int aprs_bulletin(char *out, uint16_t n, uint8_t index, const char *text)
