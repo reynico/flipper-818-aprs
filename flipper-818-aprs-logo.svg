@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="128" height="64" viewBox="0 0 128 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Flipper 818 APRS logo">
+  <title>Flipper 818 APRS</title>
+  <desc>Monochrome Impact-style italic overlapping logo for Flipper Zero screen: FLIPPER upper left, 818 center, APRS lower right.</desc>
+  <style>
+    .impact {
+      font-family: Impact, Haettenschweiler, "Arial Black", "Arial Narrow Bold", sans-serif;
+      font-weight: 900;
+      font-style: italic;
+      fill: #000;
+      letter-spacing: -1.8px;
+    }
+  </style>
+  <rect width="128" height="64" fill="#fff"/>
+  <g transform="skewX(-10)">
+    <text class="impact" x="9" y="22" font-size="22">FLIPPER</text>
+    <text class="impact" x="30" y="49" font-size="42" letter-spacing="-3.2px">818</text>
+    <text class="impact" x="70" y="61" font-size="28" letter-spacing="-2.6px">APRS</text>
+  </g>
+</svg>
