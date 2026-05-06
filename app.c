@@ -20,6 +20,20 @@ int32_t flipperham_app(void *p)
             continue;
         }
 
+        if(app->coord_edit_pending) {
+            bool is_lon = (app->text_mode == 8);
+            char *buf = is_lon ? app->p_lon_edit : app->p_lat_edit;
+            uint8_t buf_size = is_lon ? sizeof(app->p_lon_edit) : sizeof(app->p_lat_edit);
+            flipperham_coord_edit(app, buf, buf_size, is_lon);
+            position_save(app);
+            if(app->return_view == FlipperHamViewPosAction)
+                positionActionBuild(app);
+            else
+                pos_edit_menu_build(app);
+            app->coord_edit_pending = false;
+            continue;
+        }
+
         if (!app->send_requested)
             break;
 

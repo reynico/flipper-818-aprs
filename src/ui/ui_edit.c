@@ -16,7 +16,6 @@ static void messageActionSave(void *context);
 static void messageActionDo(void *context, uint32_t index);
 static bool messageCopy(FlipperHamApp *app);
 static void messageDelete(FlipperHamApp *app);
-static void positionActionBuild(FlipperHamApp *app);
 static void positionActionDo(void *context, uint32_t index);
 static void positionDelete(FlipperHamApp *app);
 
@@ -85,7 +84,7 @@ static void messageActionBuild(FlipperHamApp *app)
     submenu_set_selected_item(app->message_edit_menu, FlipperHamC2IndexEdit);
 }
 
-static void positionActionBuild(FlipperHamApp *app)
+void positionActionBuild(FlipperHamApp *app)
 {
     submenu_reset(app->pos_action_menu);
     submenu_set_header(app->pos_action_menu, "Edit GPS Position");
@@ -141,17 +140,17 @@ static void positionActionDo(void *context, uint32_t index)
     if (index == FlipperHamPosEditIndexLat)
     {
         app->text_mode = 7;
-        flipperham_coord_edit(app, app->p_lat_edit, sizeof(app->p_lat_edit), false);
-        position_save(app);
-        positionActionBuild(app);
+        app->coord_edit_pending = true;
+        app->return_view = FlipperHamViewPosAction;
+        view_dispatcher_stop(app->view_dispatcher);
         return;
     }
     else if (index == FlipperHamPosEditIndexLon)
     {
         app->text_mode = 8;
-        flipperham_coord_edit(app, app->p_lon_edit, sizeof(app->p_lon_edit), true);
-        position_save(app);
-        positionActionBuild(app);
+        app->coord_edit_pending = true;
+        app->return_view = FlipperHamViewPosAction;
+        view_dispatcher_stop(app->view_dispatcher);
         return;
     }
     else

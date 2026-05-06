@@ -46,6 +46,7 @@ void ham_tx_menu_build(FlipperHamApp *app);
 void tx_settings_menu_build(FlipperHamApp *app);
 void rx_settings_menu_build(FlipperHamApp *app);
 void pos_edit_menu_build(FlipperHamApp *app);
+void positionActionBuild(FlipperHamApp *app);
 
 void ssidfix(FlipperHamApp *app);
 void ssid_change(VariableItem *item);

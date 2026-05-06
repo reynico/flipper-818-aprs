@@ -1340,19 +1340,18 @@ void pos_edit_enter(void *context, uint32_t index)
     if (index == 1)
     {
         app->text_mode = 7;
-        flipperham_coord_edit(app, app->p_lat_edit, sizeof(app->p_lat_edit), false);
-        position_save(app);
-        pos_edit_menu_build(app);
+        app->coord_edit_pending = true;
+        app->return_view = FlipperHamViewPosEdit;
+        view_dispatcher_stop(app->view_dispatcher);
         return;
     }
 
     if (index == 2)
     {
         app->text_mode = 8;
-        flipperham_coord_edit(app, app->p_lon_edit, sizeof(app->p_lon_edit), true);
-        position_save(app);
-        pos_edit_menu_build(app);
-        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewTextInput);
+        app->coord_edit_pending = true;
+        app->return_view = FlipperHamViewPosEdit;
+        view_dispatcher_stop(app->view_dispatcher);
         return;
     }
 

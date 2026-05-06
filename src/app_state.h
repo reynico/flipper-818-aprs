@@ -172,4 +172,5 @@ typedef struct FlipperHamApp
     bool coord_sign;
     bool coord_is_lon;
     bool coord_edit_active;
+    bool coord_edit_pending;
 } FlipperHamApp;
