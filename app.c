@@ -34,6 +34,28 @@ int32_t flipperham_app(void *p)
             continue;
         }
 
+        if (app->gps_nofix_show)
+        {
+            flipperham_gps_nofix_show(app);
+            app->gps_nofix_show = false;
+            continue;
+        }
+
+        if (app->gps_debug_active)
+        {
+            flipperham_gps_debug_enter(app);
+            app->gps_debug_active = false;
+            gps_settings_menu_build(app);
+            app->return_view = FlipperHamViewGpsSettings;
+            continue;
+        }
+
+        if (app->beacon_active)
+        {
+            flipperham_beacon_enter(app);
+            continue;
+        }
+
         if (!app->send_requested)
             break;
 

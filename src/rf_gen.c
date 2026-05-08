@@ -208,6 +208,30 @@ void txstart(FlipperHamApp *app)
         if (!aprs_pos(message, sizeof(message), app->pos_name[app->tx_msg_index],
                       app->pos_lat[app->tx_msg_index], app->pos_lon[app->tx_msg_index]))
             return;
+        {
+            size_t len = strlen(message);
+            float vbat = furi_hal_power_get_battery_voltage(FuriHalPowerICFuelGauge);
+            snprintf(message + len, sizeof(message) - len, " Bat:%.2fV", (double)vbat);
+        }
+    }
+    else if (app->tx_type == 4)
+    {
+        char lat_s[POS_LEN];
+        char lon_s[POS_LEN];
+        char comment[TXT_LEN];
+        if (!app->gps.valid) return;
+        snprintf(lat_s, sizeof(lat_s), "%.5f", (double)app->gps.lat);
+        snprintf(lon_s, sizeof(lon_s), "%.5f", (double)app->gps.lon);
+        if (app->gps_comment[0])
+            snprintf(comment, sizeof(comment), "%s", app->gps_comment);
+        else
+        {
+            float vbat = furi_hal_power_get_battery_voltage(FuriHalPowerICFuelGauge);
+            snprintf(comment, sizeof(comment), "Flipper Zero | Spd:%.0fkm/h Bat:%.2fV",
+                (double)(app->gps.speed_knots * 1.852f), (double)vbat);
+        }
+        if (!aprs_pos(message, sizeof(message), comment, lat_s, lon_s))
+            return;
     }
     else
     {

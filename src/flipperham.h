@@ -56,6 +56,9 @@ typedef struct
     uint8_t debug_tx;
     uint8_t debug_rx;
     uint8_t rx_notify;
+    uint8_t gps_enabled;
+    uint16_t beacon_interval;
+    char gps_comment[TXT_LEN];
 } FlipperHamCfg;
 
 enum
@@ -81,6 +84,8 @@ enum
     FlipperHamViewSplash,
     FlipperHamViewTxSettings,
     FlipperHamViewRxSettings,
+    FlipperHamViewGpsSettings,
+    FlipperHamViewGpsAction,
 };
 
 enum
@@ -110,6 +115,7 @@ enum
     FlipperHamSettingsIndexCustomPath,
     FlipperHamSettingsIndexTxSettings,
     FlipperHamSettingsIndexRxSettings,
+    FlipperHamSettingsIndexGpsSettings,
 };
 
 enum
@@ -155,7 +161,16 @@ enum
 enum
 {
     FlipperHamPositionIndexAdd = 0,
+    FlipperHamPositionIndexGps = 1,
     FlipperHamPositionIndexBase = 450,
+};
+
+enum
+{
+    FlipperHamGpsActionSendOnce = 0,
+    FlipperHamGpsActionBeacon,
+    FlipperHamGpsActionComment,
+    FlipperHamGpsActionClearComment,
 };
 
 enum

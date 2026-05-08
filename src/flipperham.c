@@ -77,6 +77,9 @@ static void cfg_defaults(FlipperHamApp *app)
     app->dra_squelch = 4;
     app->has_decoded = false;
     app->rx_active = false;
+    app->gps_enabled = false;
+    app->beacon_interval = 120;
+    app->gps_comment[0] = 0;
 }
 
 void cfgsave(FlipperHamApp *app)
@@ -99,6 +102,9 @@ void cfgsave(FlipperHamApp *app)
     c->debug_tx = app->debug_tx;
     c->debug_rx = app->rx_debug;
     c->rx_notify = app->rx_notify;
+    c->gps_enabled = app->gps_enabled ? 1 : 0;
+    c->beacon_interval = app->beacon_interval;
+    memcpy(c->gps_comment, app->gps_comment, sizeof(c->gps_comment));
     c->dra_freq_index = app->dra_freq_index;
     memcpy(c->custom_freq, app->custom_freq_edit, sizeof(c->custom_freq));
     c->dra_volume = app->dra_volume;
@@ -203,6 +209,10 @@ void cfgload(FlipperHamApp *app)
     app->debug_tx = c->debug_tx ? true : false;
     app->rx_debug = c->debug_rx ? true : false;
     app->rx_notify = c->rx_notify ? true : false;
+    app->gps_enabled = c->gps_enabled ? true : false;
+    app->beacon_interval = c->beacon_interval;
+    memcpy(app->gps_comment, c->gps_comment, sizeof(app->gps_comment));
+    app->gps_comment[TXT_LEN - 1] = 0;
     app->dra_freq_index = c->dra_freq_index;
     memcpy(app->custom_freq_edit, c->custom_freq, sizeof(app->custom_freq_edit));
     app->custom_freq_edit[sizeof(app->custom_freq_edit) - 1] = 0;
@@ -248,6 +258,8 @@ void cfgload(FlipperHamApp *app)
         app->dra_volume = 8;
     if (app->dra_squelch > 8)
         app->dra_squelch = 4;
+    if (app->beacon_interval < 30 || app->beacon_interval > 600)
+        app->beacon_interval = 120;
 
     for (i = 0; i < TXT_N; i++)
     {
