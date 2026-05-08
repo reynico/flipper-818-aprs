@@ -23,6 +23,7 @@ uint32_t flipperham_ham_exit_callback(void *context);
 uint32_t flipperham_ham_tx_exit_callback(void *context);
 uint32_t flipperham_tx_settings_exit_callback(void *context);
 uint32_t flipperham_rx_settings_exit_callback(void *context);
+uint32_t flipperham_gps_settings_exit_callback(void *context);
 uint32_t flipperham_readme_exit_callback(void *context);
 uint32_t book_exit(void *context);
 uint32_t book_action_exit(void *context);
@@ -87,8 +88,17 @@ void flipperham_menu_free(FlipperHamApp *app);
 uint32_t repeat_scale(FlipperHamApp *app);
 
 void flipperham_rx_enter(FlipperHamApp *app);
+void flipperham_beacon_enter(FlipperHamApp *app);
 void flipperham_freq_edit_enter(FlipperHamApp *app);
 void flipperham_coord_edit(FlipperHamApp *app, char *buf, uint8_t buf_size, bool is_lon);
+
+void send_menu_build(FlipperHamApp *app);
+void gps_settings_menu_build(FlipperHamApp *app);
+void gps_action_menu_build(FlipperHamApp *app);
+void gps_settings_enter(void *context, uint32_t index);
+uint32_t flipperham_gps_action_exit_callback(void *context);
+void flipperham_gps_debug_enter(FlipperHamApp *app);
+void flipperham_gps_nofix_show(FlipperHamApp *app);
 
 FlipperHamApp *flipperham_app_alloc(void);
 void flipperham_app_free(FlipperHamApp *app);

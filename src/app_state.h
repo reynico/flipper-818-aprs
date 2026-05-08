@@ -5,6 +5,7 @@
 #include "dra818v.h"
 #include "afsk.h"
 #include "ax25_decode.h"
+#include "gps.h"
 
 #include <gui/modules/submenu.h>
 #include <gui/modules/text_input.h>
@@ -37,6 +38,8 @@ typedef struct FlipperHamApp
     VariableItemList *pos_edit_menu;
     VariableItemList *tx_settings_menu;
     VariableItemList *rx_settings_menu;
+    VariableItemList *gps_settings_menu;
+    Submenu *gps_action_menu;
     TextInput *text_input;
     Widget *readme_widget;
     View *splash_view;
@@ -173,4 +176,14 @@ typedef struct FlipperHamApp
     bool coord_is_lon;
     bool coord_edit_active;
     bool coord_edit_pending;
+
+    Gps gps;
+    bool gps_enabled;
+    uint16_t beacon_interval;
+    bool beacon_active;
+    bool beacon_cancel;
+    bool gps_debug_active;
+    bool gps_nofix_show;
+    char gps_comment[TXT_LEN];
+    char gps_comment_edit[TXT_LEN];
 } FlipperHamApp;
