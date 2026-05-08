@@ -65,6 +65,7 @@ App(
         "src/dra818v.c",
         "src/afsk.c",
         "src/ax25_decode.c",
+        "src/gps.c",
         "src/ui/ui.c",
         "src/ui/ui_edit.c",
         "src/ui/ui_splash.c",
