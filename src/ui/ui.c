@@ -25,6 +25,8 @@ static void vhf_freq_change(VariableItem *item);
 static void volume_change(VariableItem *item);
 static void squelch_change(VariableItem *item);
 static void aprs_path_custom_save(void *context);
+static void gps_enable_change(VariableItem *item);
+static void beacon_interval_change(VariableItem *item);
 static const char *aprs_paths[] = {"None", "RFONLY", "NOGATE", "W1-1", "W2-2", "ARISS", "APRSAT", "Custom"};
 FlipperHamApp *gapp;
 static bool call_copy(FlipperHamApp *app);
@@ -513,6 +515,12 @@ uint32_t flipperham_rx_settings_exit_callback(void *context)
     return FlipperHamViewSettings;
 }
 
+uint32_t flipperham_gps_settings_exit_callback(void *context)
+{
+    UNUSED(context);
+    return FlipperHamViewSettings;
+}
+
 uint32_t flipperham_text_exit_callback(void *context)
 {
     FlipperHamApp *app = gapp;
@@ -523,12 +531,28 @@ uint32_t flipperham_text_exit_callback(void *context)
     return app->text_view;
 }
 
+void send_menu_build(FlipperHamApp *app)
+{
+    submenu_reset(app->send_menu);
+    submenu_add_item(app->send_menu, "Message", FlipperHamSendIndexMessage,
+                     flipperham_send_callback, app);
+    submenu_add_item(app->send_menu, "Position", FlipperHamSendIndexPosition,
+                     flipperham_send_callback, app);
+    submenu_add_item(app->send_menu, "Status", FlipperHamSendIndexStatus,
+                     flipperham_send_callback, app);
+    submenu_add_item(app->send_menu, "Bulletin", FlipperHamSendIndexBulletin,
+                     flipperham_send_callback, app);
+}
+
 void flipperham_menu_callback(void *context, uint32_t index)
 {
     FlipperHamApp *app = context;
 
     if (index == FlipperHamMenuIndexSend)
+    {
+        send_menu_build(app);
         view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewSend);
+    }
     if (index == FlipperHamMenuIndexRx) {
         flipperham_rx_enter(app);
         return;
@@ -585,6 +609,7 @@ void flipperham_send_callback(void *context, uint32_t index)
         status_menu_build(app);
         view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewStatus);
     }
+
 }
 
 void bulletin_menu_build(FlipperHamApp *app)
@@ -838,6 +863,7 @@ void settings_menu_build(FlipperHamApp *app)
 
     variable_item_list_add(app->settings_menu, "TX Settings", 0, NULL, NULL);
     variable_item_list_add(app->settings_menu, "RX Settings", 0, NULL, NULL);
+    variable_item_list_add(app->settings_menu, "GPS Settings", 0, NULL, NULL);
 }
 
 void tx_settings_menu_build(FlipperHamApp *app)
@@ -946,6 +972,8 @@ void message_menu_build(FlipperHamApp *app)
                 }
 }
 
+static void gps_position_pick(void *context, uint32_t index);
+
 void position_menu_build(FlipperHamApp *app)
 {
     uint8_t i;
@@ -964,6 +992,10 @@ void position_menu_build(FlipperHamApp *app)
         submenu_add_item_ex(app->position_menu, app->pos_name[i], FlipperHamPositionIndexBase + i,
                             position_pick, app);
     }
+
+    if (app->gps_enabled)
+        submenu_add_item(app->position_menu, "GPS Position", FlipperHamPositionIndexGps,
+                         gps_position_pick, app);
 
     submenu_set_selected_item(app->position_menu, FlipperHamPositionIndexAdd);
     if (app->position_sel >= FlipperHamPositionIndexBase)
@@ -1256,6 +1288,11 @@ void settings_enter(void *context, uint32_t index)
         view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewRxSettings);
         return;
     }
+    if(index == FlipperHamSettingsIndexGpsSettings - adj) {
+        gps_settings_menu_build(app);
+        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewGpsSettings);
+        return;
+    }
 }
 
 static void aprs_path_custom_save(void *context)
@@ -1459,4 +1496,158 @@ static void c2(void *context, uint32_t index)
     snprintf(app->c2_h, sizeof(app->c2_h), "No SSID free");
     book_action_menu_build(app);
     view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewC2);
+}
+
+static const uint16_t beacon_intervals[] = {30, 60, 120, 300, 600};
+static const char *beacon_labels[] = {"30s", "60s", "120s", "5min", "10min"};
+#define BEACON_INTERVAL_COUNT (sizeof(beacon_intervals) / sizeof(beacon_intervals[0]))
+
+static void gps_enable_change(VariableItem *item)
+{
+    FlipperHamApp *app = variable_item_get_context(item);
+
+    app->gps_enabled = variable_item_get_current_value_index(item) ? true : false;
+    variable_item_set_current_value_text(item, app->gps_enabled ? "Yes" : "No");
+    if (app->gps_enabled)
+        gps_start(&app->gps);
+    else
+        gps_stop(&app->gps);
+    cfgsave(app);
+}
+
+static void beacon_interval_change(VariableItem *item)
+{
+    FlipperHamApp *app = variable_item_get_context(item);
+    uint8_t i = variable_item_get_current_value_index(item);
+
+    if (i >= BEACON_INTERVAL_COUNT) i = 2;
+    app->beacon_interval = beacon_intervals[i];
+    variable_item_set_current_value_text(item, beacon_labels[i]);
+    cfgsave(app);
+}
+
+void gps_settings_menu_build(FlipperHamApp *app)
+{
+    VariableItem *it;
+    uint8_t bi;
+
+    variable_item_list_reset(app->gps_settings_menu);
+
+    it = variable_item_list_add(app->gps_settings_menu, "Enable GPS", 2, gps_enable_change, app);
+    variable_item_set_current_value_index(it, app->gps_enabled ? 1 : 0);
+    variable_item_set_current_value_text(it, app->gps_enabled ? "Yes" : "No");
+
+    it = variable_item_list_add(app->gps_settings_menu, "Beacon Interval",
+                                BEACON_INTERVAL_COUNT, beacon_interval_change, app);
+    bi = 2;
+    for (uint8_t i = 0; i < BEACON_INTERVAL_COUNT; i++)
+        if (beacon_intervals[i] == app->beacon_interval) { bi = i; break; }
+    variable_item_set_current_value_index(it, bi);
+    variable_item_set_current_value_text(it, beacon_labels[bi]);
+
+    variable_item_list_add(app->gps_settings_menu, "GPS Status", 0, NULL, NULL);
+}
+
+void gps_settings_enter(void *context, uint32_t index)
+{
+    FlipperHamApp *app = context;
+
+    if (index == 2)
+    {
+        app->gps_debug_active = true;
+        app->return_view = FlipperHamViewGpsSettings;
+        view_dispatcher_stop(app->view_dispatcher);
+    }
+}
+
+static void gps_comment_save(void *context)
+{
+    FlipperHamApp *app = context;
+
+    snprintf(app->gps_comment, sizeof(app->gps_comment), "%s", app->gps_comment_edit);
+    cfgsave(app);
+    gps_action_menu_build(app);
+    view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewGpsAction);
+}
+
+static void gps_action_do(void *context, uint32_t index)
+{
+    FlipperHamApp *app = context;
+
+    if (index == FlipperHamGpsActionSendOnce)
+    {
+        if (!app->gps.valid)
+        {
+            app->gps_nofix_show = true;
+            app->return_view = FlipperHamViewGpsAction;
+            view_dispatcher_stop(app->view_dispatcher);
+            return;
+        }
+        app->tx_type = 4;
+        app->tx_msg_index = 0;
+        app->return_view = FlipperHamViewGpsAction;
+        app->send_requested = true;
+        view_dispatcher_stop(app->view_dispatcher);
+        return;
+    }
+
+    if (index == FlipperHamGpsActionBeacon)
+    {
+        app->beacon_active = true;
+        app->beacon_cancel = false;
+        app->return_view = FlipperHamViewGpsAction;
+        view_dispatcher_stop(app->view_dispatcher);
+        return;
+    }
+
+    if (index == FlipperHamGpsActionComment)
+    {
+        snprintf(app->gps_comment_edit, sizeof(app->gps_comment_edit), "%s", app->gps_comment);
+        app->text_view = FlipperHamViewGpsAction;
+        text_input_reset(app->text_input);
+        text_input_set_header_text(app->text_input, "GPS Comment");
+        text_input_set_result_callback(app->text_input, gps_comment_save, app,
+            app->gps_comment_edit, sizeof(app->gps_comment_edit), false);
+        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewTextInput);
+        return;
+    }
+
+    if (index == FlipperHamGpsActionClearComment)
+    {
+        app->gps_comment[0] = 0;
+        cfgsave(app);
+        gps_action_menu_build(app);
+        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewGpsAction);
+    }
+}
+
+void gps_action_menu_build(FlipperHamApp *app)
+{
+    submenu_reset(app->gps_action_menu);
+    submenu_set_header(app->gps_action_menu, "GPS Position");
+    submenu_add_item(app->gps_action_menu, "Send Once", FlipperHamGpsActionSendOnce,
+                     gps_action_do, app);
+    submenu_add_item(app->gps_action_menu, "Start Beacon", FlipperHamGpsActionBeacon,
+                     gps_action_do, app);
+    submenu_add_item(app->gps_action_menu,
+        app->gps_comment[0] ? "Edit Comment" : "Set Comment",
+        FlipperHamGpsActionComment, gps_action_do, app);
+    if (app->gps_comment[0])
+        submenu_add_item(app->gps_action_menu, "Clear Comment",
+                         FlipperHamGpsActionClearComment, gps_action_do, app);
+}
+
+uint32_t flipperham_gps_action_exit_callback(void *context)
+{
+    UNUSED(context);
+    return FlipperHamViewPosition;
+}
+
+static void gps_position_pick(void *context, uint32_t index)
+{
+    FlipperHamApp *app = context;
+
+    UNUSED(index);
+    gps_action_menu_build(app);
+    view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewGpsAction);
 }

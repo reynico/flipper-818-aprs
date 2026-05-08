@@ -4,6 +4,7 @@
 #include "../afsk.h"
 #include "../dra818v.h"
 #include "../ax25_decode.h"
+#include "../gps.h"
 
 #include <furi_hal.h>
 #include <furi_hal_resources.h>
@@ -66,6 +67,8 @@ void flipperham_menu_free(FlipperHamApp *app)
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewHamTx);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewTxSettings);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewRxSettings);
+        view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewGpsSettings);
+        view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewGpsAction);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewTextInput);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewReadme);
         view_dispatcher_free(app->view_dispatcher);
@@ -180,6 +183,18 @@ void flipperham_menu_free(FlipperHamApp *app)
         app->rx_settings_menu = NULL;
     }
 
+    if (app->gps_settings_menu)
+    {
+        variable_item_list_free(app->gps_settings_menu);
+        app->gps_settings_menu = NULL;
+    }
+
+    if (app->gps_action_menu)
+    {
+        submenu_free(app->gps_action_menu);
+        app->gps_action_menu = NULL;
+    }
+
     if (app->ssid_menu)
     {
         variable_item_list_free(app->ssid_menu);
@@ -253,6 +268,8 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->pos_edit_menu = variable_item_list_alloc();
     app->tx_settings_menu = variable_item_list_alloc();
     app->rx_settings_menu = variable_item_list_alloc();
+    app->gps_settings_menu = variable_item_list_alloc();
+    app->gps_action_menu = submenu_alloc();
     app->text_input = text_input_alloc();
     app->readme_widget = widget_alloc();
     app->splash_view = NULL;
@@ -327,6 +344,15 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->rx_active = false;
     app->rx_count = 0;
     app->rx_view_port = NULL;
+    app->gps_enabled = false;
+    app->beacon_interval = 120;
+    app->beacon_active = false;
+    app->beacon_cancel = false;
+    app->gps_debug_active = false;
+    app->gps_nofix_show = false;
+    app->gps_comment[0] = 0;
+    app->gps_comment_edit[0] = 0;
+    memset(&app->gps, 0, sizeof(app->gps));
 
     cfgload(app);
 
@@ -344,6 +370,9 @@ FlipperHamApp *flipperham_app_alloc(void)
         }
     }
 
+    if (app->gps_enabled)
+        gps_start(&app->gps);
+
     view_dispatcher_attach_to_gui(app->view_dispatcher, app->gui, ViewDispatcherTypeFullscreen);
     splash_view_alloc(app);
     app->return_view = splash_startup_view(app);
@@ -356,14 +385,7 @@ FlipperHamApp *flipperham_app_alloc(void)
     submenu_add_item(app->submenu, "About", FlipperHamMenuIndexReadme,
                      flipperham_menu_callback, app);
 
-    submenu_add_item(app->send_menu, "Message", FlipperHamSendIndexMessage,
-                     flipperham_send_callback, app);
-    submenu_add_item(app->send_menu, "Position", FlipperHamSendIndexPosition,
-                     flipperham_send_callback, app);
-    submenu_add_item(app->send_menu, "Status", FlipperHamSendIndexStatus, flipperham_send_callback,
-                     app);
-    submenu_add_item(app->send_menu, "Bulletin", FlipperHamSendIndexBulletin,
-                     flipperham_send_callback, app);
+    send_menu_build(app);
 
     bulletin_menu_build(app);
     status_menu_build(app);
@@ -424,6 +446,10 @@ FlipperHamApp *flipperham_app_alloc(void)
                                flipperham_tx_settings_exit_callback);
     view_set_previous_callback(variable_item_list_get_view(app->rx_settings_menu),
                                flipperham_rx_settings_exit_callback);
+    view_set_previous_callback(variable_item_list_get_view(app->gps_settings_menu),
+                               flipperham_gps_settings_exit_callback);
+    view_set_previous_callback(submenu_get_view(app->gps_action_menu),
+                               flipperham_gps_action_exit_callback);
     view_set_previous_callback(text_input_get_view(app->text_input), flipperham_text_exit_callback);
     view_set_previous_callback(widget_get_view(app->readme_widget),
                                flipperham_readme_exit_callback);
@@ -432,6 +458,7 @@ FlipperHamApp *flipperham_app_alloc(void)
     variable_item_list_set_enter_callback(app->ham_menu, ham_enter, app);
     variable_item_list_set_enter_callback(app->ham_tx_menu, ham_tx_enter, app);
     variable_item_list_set_enter_callback(app->pos_edit_menu, pos_edit_enter, app);
+    variable_item_list_set_enter_callback(app->gps_settings_menu, gps_settings_enter, app);
 
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewSplash, app->splash_view);
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewMenu,
@@ -470,6 +497,10 @@ FlipperHamApp *flipperham_app_alloc(void)
                              variable_item_list_get_view(app->tx_settings_menu));
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewRxSettings,
                              variable_item_list_get_view(app->rx_settings_menu));
+    view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewGpsSettings,
+                             variable_item_list_get_view(app->gps_settings_menu));
+    view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewGpsAction,
+                             submenu_get_view(app->gps_action_menu));
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewTextInput,
                              text_input_get_view(app->text_input));
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewReadme,
@@ -487,6 +518,7 @@ void flipperham_app_free(FlipperHamApp *app)
         afsk_rx_stop(&app->afsk_rx);
         app->rx_active = false;
     }
+    gps_stop(&app->gps);
     if(app->dra.ready) {
         dra818v_deinit(&app->dra);
     }
@@ -940,6 +972,256 @@ void flipperham_rx_enter(FlipperHamApp *app)
     gui_remove_view_port(app->gui, app->rx_view_port);
     view_port_free(app->rx_view_port);
     app->rx_view_port = NULL;
+}
+
+/* ── GPS debug screen ──────────────────────────────────────────── */
+
+static const char *gps_fix_type(uint8_t q)
+{
+    if (q == 2) return "DGPS";
+    if (q == 1) return "GPS";
+    return "None";
+}
+
+static void gps_debug_draw(Canvas *canvas, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+    char line[44];
+
+    canvas_clear(canvas);
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str(canvas, 0, 10, "GPS Status");
+
+    canvas_set_font(canvas, FontSecondary);
+
+    if (!app->gps.running)
+    {
+        canvas_draw_str(canvas, 0, 28, "GPS is disabled.");
+        canvas_draw_str(canvas, 0, 40, "Enable in GPS Settings.");
+        return;
+    }
+
+    if (app->gps.rx_count == 0 &&
+        (furi_get_tick() - app->gps.start_tick > 3000))
+    {
+        canvas_draw_str(canvas, 0, 28, "No GPS module detected.");
+        canvas_draw_str(canvas, 0, 40, "Check wiring (PC0/PC1).");
+        return;
+    }
+
+    snprintf(line, sizeof(line), "Fix: %s  Sats: %u",
+        gps_fix_type(app->gps.fix_quality), app->gps.sats);
+    canvas_draw_str(canvas, 0, 22, line);
+
+    snprintf(line, sizeof(line), "LAT: %.6f", (double)app->gps.lat);
+    canvas_draw_str(canvas, 0, 32, line);
+
+    snprintf(line, sizeof(line), "LON: %.6f", (double)app->gps.lon);
+    canvas_draw_str(canvas, 0, 42, line);
+
+    snprintf(line, sizeof(line), "SPD: %.1f kn  CRS: %.1f",
+        (double)app->gps.speed_knots, (double)app->gps.course);
+    canvas_draw_str(canvas, 0, 52, line);
+
+    snprintf(line, sizeof(line), "ALT: %.1f m", (double)app->gps.altitude);
+    canvas_draw_str(canvas, 0, 62, line);
+}
+
+static void gps_debug_input(InputEvent *event, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+
+    if (event->type != InputTypeShort) return;
+    if (event->key == InputKeyBack)
+        app->gps_debug_active = false;
+}
+
+void flipperham_gps_debug_enter(FlipperHamApp *app)
+{
+    ViewPort *vp = view_port_alloc();
+    view_port_draw_callback_set(vp, gps_debug_draw, app);
+    view_port_input_callback_set(vp, gps_debug_input, app);
+    gui_add_view_port(app->gui, vp, GuiLayerFullscreen);
+
+    while (app->gps_debug_active)
+    {
+        view_port_update(vp);
+        furi_delay_ms(500);
+    }
+
+    gui_remove_view_port(app->gui, vp);
+    view_port_free(vp);
+}
+
+/* ── No-fix message ────────────────────────────────────────────── */
+
+static void nofix_draw(Canvas *canvas, void *ctx)
+{
+    UNUSED(ctx);
+    canvas_clear(canvas);
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str_aligned(canvas, 64, 24, AlignCenter, AlignCenter, "No GPS Fix");
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str_aligned(canvas, 64, 40, AlignCenter, AlignCenter, "Try again later");
+}
+
+static volatile bool nofix_done;
+
+static void nofix_input(InputEvent *event, void *ctx)
+{
+    UNUSED(ctx);
+    if (event->type == InputTypeShort)
+        nofix_done = true;
+}
+
+void flipperham_gps_nofix_show(FlipperHamApp *app)
+{
+    nofix_done = false;
+    ViewPort *vp = view_port_alloc();
+    view_port_draw_callback_set(vp, nofix_draw, NULL);
+    view_port_input_callback_set(vp, nofix_input, NULL);
+    gui_add_view_port(app->gui, vp, GuiLayerFullscreen);
+
+    uint32_t t0 = furi_get_tick();
+    while (!nofix_done && (furi_get_tick() - t0 < 1500))
+    {
+        view_port_update(vp);
+        furi_delay_ms(50);
+    }
+
+    gui_remove_view_port(app->gui, vp);
+    view_port_free(vp);
+}
+
+/* ── Beacon mode ───────────────────────────────────────────────── */
+
+static void beacon_draw(Canvas *canvas, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+    char line[44];
+
+    canvas_clear(canvas);
+    canvas_set_font(canvas, FontPrimary);
+
+    if (app->gps.valid)
+        snprintf(line, sizeof(line), "GPS Beacon  SAT:%u", app->gps.sats);
+    else
+        snprintf(line, sizeof(line), "GPS Beacon  No Fix");
+    canvas_draw_str(canvas, 0, 10, line);
+
+    canvas_set_font(canvas, FontSecondary);
+
+    snprintf(line, sizeof(line), "%.4f MHz  Int:%us",
+        (double)app->dra_freq, app->beacon_interval);
+    canvas_draw_str(canvas, 0, 22, line);
+
+    if (app->gps.valid)
+    {
+        snprintf(line, sizeof(line), "LAT: %.5f", (double)app->gps.lat);
+        canvas_draw_str(canvas, 0, 32, line);
+        snprintf(line, sizeof(line), "LON: %.5f", (double)app->gps.lon);
+        canvas_draw_str(canvas, 0, 42, line);
+        snprintf(line, sizeof(line), "SPD:%.1fkn  CRS:%.0f  ALT:%.0fm",
+            (double)app->gps.speed_knots, (double)app->gps.course,
+            (double)app->gps.altitude);
+        canvas_draw_str(canvas, 0, 52, line);
+    }
+    else
+    {
+        canvas_draw_str(canvas, 0, 36, "Waiting for GPS fix...");
+    }
+
+    uint32_t elapsed = (furi_get_tick() - app->repeat_t0) / 1000;
+    uint32_t remaining = 0;
+    if (elapsed < app->beacon_interval)
+        remaining = app->beacon_interval - elapsed;
+
+    snprintf(line, sizeof(line), "TX:%u  Next:%lus",
+        app->repeat_i, (unsigned long)remaining);
+    canvas_draw_str(canvas, 0, 62, line);
+}
+
+static void beacon_input(InputEvent *event, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+
+    if (event->type != InputTypeShort) return;
+    if (event->key == InputKeyBack)
+        app->beacon_cancel = true;
+}
+
+void flipperham_beacon_enter(FlipperHamApp *app)
+{
+    ViewPort *vp;
+
+    if (!app->pkt) app->pkt = malloc(sizeof(Packet));
+    if (!app->wave) app->wave = malloc(sizeof(uint16_t) * WAVE_N);
+    if (!app->pkt || !app->wave)
+    {
+        if (app->pkt) { free(app->pkt); app->pkt = NULL; }
+        if (app->wave) { free(app->wave); app->wave = NULL; }
+        return;
+    }
+
+    vp = view_port_alloc();
+    view_port_draw_callback_set(vp, beacon_draw, app);
+    view_port_input_callback_set(vp, beacon_input, app);
+    gui_add_view_port(app->gui, vp, GuiLayerFullscreen);
+
+    app->beacon_cancel = false;
+    app->repeat_i = 0;
+    app->repeat_t0 = furi_get_tick() - ((uint32_t)app->beacon_interval * 1000);
+
+    furi_hal_power_suppress_charge_enter();
+
+    while (!app->beacon_cancel)
+    {
+        view_port_update(vp);
+
+        uint32_t elapsed = furi_get_tick() - app->repeat_t0;
+        bool should_tx = (elapsed >= (uint32_t)app->beacon_interval * 1000);
+
+        if (should_tx && app->gps.valid)
+        {
+            app->tx_type = 4;
+            txstart(app);
+            if (app->tx_ok && dra818v_ensure_ready(app))
+            {
+                furi_hal_light_set(LightGreen, 255);
+                dra818v_ptt_on(&app->dra);
+                furi_delay_ms(50);
+                afsk_tx_start(&app->afsk_tx, app->wave, app->wave_len);
+                while (app->afsk_tx.active)
+                {
+                    view_port_update(vp);
+                    furi_delay_ms(20);
+                }
+                afsk_tx_stop(&app->afsk_tx);
+                furi_delay_ms(50);
+                dra818v_ptt_off(&app->dra);
+                furi_hal_light_set(LightGreen, 0);
+                app->repeat_i++;
+            }
+            app->repeat_t0 = furi_get_tick();
+        }
+        else if (should_tx)
+        {
+            app->repeat_t0 = furi_get_tick();
+        }
+
+        furi_delay_ms(200);
+    }
+
+    furi_hal_power_suppress_charge_exit();
+    furi_hal_light_set(LightGreen, 0);
+    furi_hal_light_set(LightRed, 0);
+
+    gui_remove_view_port(app->gui, vp);
+    view_port_free(vp);
+
+    free(app->pkt); app->pkt = NULL;
+    free(app->wave); app->wave = NULL;
+    app->beacon_active = false;
 }
 
 /* ── Frequency editor ───────────────────────────────────────────── */
