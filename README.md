@@ -19,6 +19,7 @@ By [LU3ARN](https://www.qrz.com/db/LU3ARN). Based on [flipper-ham](https://githu
 - DRA818V/SA818V module (or U variant for UHF)
 - A few passive components (resistors, capacitors)
 - VHF/UHF antenna appropriate for your frequency
+- **Optional**: NMEA-compatible GPS module (e.g. NEO-6M) for live position and beacon mode
 - **Ham radio license** for your jurisdiction
 
 ## Wiring
@@ -51,6 +52,19 @@ H/L pin         ────────────── GND (low power)
 
 The 120k/120k voltage divider on the RX audio biases the ADC input at 1.65V.
 
+### GPS module (optional)
+
+```
+Flipper Zero GPIO              GPS Module (NEO-6M or compatible)
+============================   ==================================
+PC0 (LPUART RX) ───────────── TX
+PC1 (LPUART TX) ───────────── RX
+3V3             ───────────── VCC
+GND             ───────────── GND
+```
+
+Any NMEA-compatible GPS module at 9600 baud works. The module connects to the Flipper's LPUART on pins PC0/PC1, leaving the main UART free for the DRA818V.
+
 ## Build
 
 ```sh
@@ -75,6 +89,26 @@ The app appears under **Tools** on the Flipper as **818 APRS Transceiver**.
 | Squelch | 0-8 | RX squelch threshold (0=open) |
 | Debug TX | Yes/No | Show packet details during TX |
 | Debug RX | Yes/No | Show ADC/CRC/flag stats during RX |
+
+## GPS
+
+Enable GPS under **Settings > GPS Settings**. Once enabled, the module begins parsing NMEA sentences and acquiring a fix.
+
+### Features
+
+- **Live position TX**: Send a one-shot APRS position report using the current GPS coordinates
+- **Beacon mode**: Automatic periodic position transmission at a configurable interval
+- **GPS status screen**: Real-time display of fix quality, satellite count, coordinates, speed, course, and altitude
+
+### GPS settings
+
+| Setting | Options | Description |
+|---------|---------|-------------|
+| Enable GPS | Yes/No | Start/stop the GPS serial interface |
+| Beacon Interval | 30s / 60s / 120s / 5min / 10min | Time between automatic beacon transmissions |
+| GPS Comment | Free text (63 chars) | Custom comment appended to position packets |
+
+Position packets include latitude, longitude, course, speed, altitude, and battery voltage. When no custom comment is set, the packet defaults to `Flipper Zero | Spd:XXkm/h Bat:X.XXV`.
 
 ## RX navigation
 
