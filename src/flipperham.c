@@ -71,10 +71,13 @@ static void cfg_defaults(FlipperHamApp *app)
     app->dra.ptt_pin = &gpio_ext_pb3;
     app->dra.pd_pin = &gpio_ext_pb2;
     app->dra.sq_pin = &gpio_ext_pc3;
+    app->dra.hl_pin = &gpio_ext_pa7;
+    app->dra.high_power = false;
     app->dra_freq = 144.3900f;
     app->dra_freq_index = 0;
     app->dra_volume = 8;
     app->dra_squelch = 4;
+    app->dra_high_power = false;
     app->has_decoded = false;
     app->rx_active = false;
     app->gps_enabled = false;
@@ -102,6 +105,7 @@ void cfgsave(FlipperHamApp *app)
     c->debug_tx = app->debug_tx;
     c->debug_rx = app->rx_debug;
     c->rx_notify = app->rx_notify;
+    c->dra_high_power = app->dra_high_power ? 1 : 0;
     c->gps_enabled = app->gps_enabled ? 1 : 0;
     c->beacon_interval = app->beacon_interval;
     memcpy(c->gps_comment, app->gps_comment, sizeof(c->gps_comment));
@@ -209,6 +213,7 @@ void cfgload(FlipperHamApp *app)
     app->debug_tx = c->debug_tx ? true : false;
     app->rx_debug = c->debug_rx ? true : false;
     app->rx_notify = c->rx_notify ? true : false;
+    app->dra_high_power = c->dra_high_power ? true : false;
     app->gps_enabled = c->gps_enabled ? true : false;
     app->beacon_interval = c->beacon_interval;
     memcpy(app->gps_comment, c->gps_comment, sizeof(app->gps_comment));

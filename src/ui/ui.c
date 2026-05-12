@@ -22,6 +22,7 @@ static void debug_change(VariableItem *item);
 static void debug_rx_change(VariableItem *item);
 static void notify_change(VariableItem *item);
 static void vhf_freq_change(VariableItem *item);
+static void tx_power_change(VariableItem *item);
 static void volume_change(VariableItem *item);
 static void squelch_change(VariableItem *item);
 static void aprs_path_custom_save(void *context);
@@ -873,6 +874,10 @@ void tx_settings_menu_build(FlipperHamApp *app)
 
     variable_item_list_reset(app->tx_settings_menu);
 
+    it = variable_item_list_add(app->tx_settings_menu, "TX Power", 2, tx_power_change, app);
+    variable_item_set_current_value_index(it, app->dra_high_power ? 1 : 0);
+    variable_item_set_current_value_text(it, app->dra_high_power ? "High" : "Low");
+
     it = variable_item_list_add(app->tx_settings_menu, "Repeat TX", 5, repeat_change, app);
     variable_item_set_current_value_index(it, app->repeat_n - 1);
     snprintf(a, sizeof(a), "%u", app->repeat_n);
@@ -1174,6 +1179,16 @@ static void vhf_freq_change(VariableItem *item)
         dra818v_set_group(&app->dra, app->dra_freq, app->dra_freq, app->dra_squelch);
     cfgsave(app);
     settings_menu_build(app);
+}
+
+static void tx_power_change(VariableItem *item)
+{
+    FlipperHamApp *app = variable_item_get_context(item);
+
+    app->dra_high_power = variable_item_get_current_value_index(item) ? true : false;
+    variable_item_set_current_value_text(item, app->dra_high_power ? "High" : "Low");
+    dra818v_set_power(&app->dra, app->dra_high_power);
+    cfgsave(app);
 }
 
 void repeat_change(VariableItem *item)

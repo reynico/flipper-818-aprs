@@ -56,6 +56,7 @@ typedef struct
     uint8_t debug_tx;
     uint8_t debug_rx;
     uint8_t rx_notify;
+    uint8_t dra_high_power;
     uint8_t gps_enabled;
     uint16_t beacon_interval;
     char gps_comment[TXT_LEN];
@@ -120,7 +121,8 @@ enum
 
 enum
 {
-    FlipperHamTxSettingsIndexRepeat = 0,
+    FlipperHamTxSettingsIndexPower = 0,
+    FlipperHamTxSettingsIndexRepeat,
     FlipperHamTxSettingsIndexLeadin,
     FlipperHamTxSettingsIndexPreamble,
     FlipperHamTxSettingsIndexDebugTx,

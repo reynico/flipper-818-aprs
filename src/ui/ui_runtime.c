@@ -331,6 +331,8 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->dra.ptt_pin = &gpio_ext_pb3;
     app->dra.pd_pin = &gpio_ext_pb2;
     app->dra.sq_pin = &gpio_ext_pc3;
+    app->dra.hl_pin = &gpio_ext_pa7;
+    app->dra.high_power = false;
     app->dra.serial = NULL;
     app->dra.rx_buf = NULL;
     app->dra.ready = false;
@@ -712,6 +714,7 @@ static bool dra818v_ensure_ready(FlipperHamApp *app)
 {
     if(app->dra.ready) return true;
 
+    app->dra.high_power = app->dra_high_power;
     if(!dra818v_init(&app->dra)) return false;
 
     if(!dra818v_handshake(&app->dra)) {
