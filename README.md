@@ -31,6 +31,7 @@ TX  (PB6)  ─────────────────── RXD
 RX  (PB7)  ─────────────────── TXD
 B3  (PB3)  ─────────────────── PTT  (active LOW)
 B2  (PB2)  ─────────────────── PD   (HIGH = power on)
+A7  (PA7)  ─────────────────── H/L  (LOW = 0.5W, float = 1W)
 GND        ─────────────────── GND  (common ground)
 
 Audio TX (Flipper to module):
@@ -47,7 +48,7 @@ SPK+ ──[100nF cap]───┤
 Power:
 3V3 (Flipper)   ────────────── VCC
 GND             ────────────── GND
-H/L pin         ────────────── GND (low power)
+A7  (PA7)       ────────────── H/L (TX power select)
 ```
 
 The 120k/120k voltage divider on the RX audio biases the ADC input at 1.65V.
@@ -82,6 +83,7 @@ The app appears under **Tools** on the Flipper as **818 APRS Transceiver**.
 |---------|-------|-------------|
 | Freq | Presets | APRS frequency for your region |
 | APRS Path | None/WIDE1-1/WIDE2-2/etc | Digipeater path |
+| TX Power | Low/High | Low = 0.5W, High = 1W |
 | Repeat TX | 1-5 | Number of transmission repeats |
 | Lead-in | 0-1000 ms | Mark tone before preamble |
 | Preamble | 0-1000 ms | Flag bytes before data |
@@ -158,7 +160,7 @@ The script generates Bell 202 AFSK, FM-modulates it, and transmits via `bladeRF-
 ## Notes
 
 - Only transmit where you are legally allowed to do so
-- The module runs from the Flipper's 3.3V line at low power (H/L tied to GND)
+- The module runs from the Flipper's 3.3V regulator (LM3281, 1.2A max). Low power (0.5W) draws ~400mA, high power (1W) draws ~700mA
 - RX decode rate is ~100% with a clean signal and correct settings
 
 ## Credits
