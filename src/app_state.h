@@ -158,6 +158,7 @@ typedef struct FlipperHamApp
     char custom_freq_edit[12];
     uint8_t dra_volume;
     uint8_t dra_squelch;
+    bool dra_high_power;
     bool rx_debug;
     bool rx_notify;
     uint8_t rx_hdr[4];
