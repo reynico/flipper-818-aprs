@@ -51,6 +51,9 @@ bool dra818v_init(Dra818v *dra)
     furi_hal_gpio_write(dra->ptt_pin, true);
     furi_hal_gpio_write(dra->pd_pin, true);
 
+    if(dra->hl_pin)
+        dra818v_set_power(dra, dra->high_power);
+
     if(dra->sq_pin)
         furi_hal_gpio_init(dra->sq_pin, GpioModeInput, GpioPullDown, GpioSpeedLow);
 
@@ -82,6 +85,8 @@ void dra818v_deinit(Dra818v *dra)
 
     furi_hal_gpio_init(dra->ptt_pin, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
     furi_hal_gpio_init(dra->pd_pin, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
+    if(dra->hl_pin)
+        furi_hal_gpio_init(dra->hl_pin, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
     if(dra->sq_pin)
         furi_hal_gpio_init(dra->sq_pin, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
 
@@ -140,6 +145,19 @@ bool dra818v_set_filter(Dra818v *dra, bool pre_emph, bool highpass, bool lowpass
     if(!send_cmd(dra, cmd, resp, sizeof(resp)))
         return false;
     return strstr(resp, "+DMOSETFILTER:0") != NULL;
+}
+
+void dra818v_set_power(Dra818v *dra, bool high_power)
+{
+    dra->high_power = high_power;
+    if(!dra->hl_pin) return;
+
+    if(high_power) {
+        furi_hal_gpio_init(dra->hl_pin, GpioModeAnalog, GpioPullNo, GpioSpeedLow);
+    } else {
+        furi_hal_gpio_init(dra->hl_pin, GpioModeOutputPushPull, GpioPullNo, GpioSpeedLow);
+        furi_hal_gpio_write(dra->hl_pin, false);
+    }
 }
 
 void dra818v_ptt_on(Dra818v *dra)
