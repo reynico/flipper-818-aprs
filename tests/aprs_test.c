@@ -66,9 +66,9 @@ static void test_lat_lon_and_pos(void)
 
 
     TEST_ASSERT_EQUAL_INT(33, aprs_pos(c, sizeof(c), "Cismigiu Park", "44.437461", "26.090215"));
-    TEST_ASSERT_EQUAL_STRING("!4426.25N/02605.41E-Cismigiu Park", c);
+    TEST_ASSERT_EQUAL_STRING("!4426.25N/02605.41EMCismigiu Park", c);
     TEST_ASSERT_EQUAL_INT(31, aprs_pos(c, sizeof(c), "Null Island", "0.02", "-0.04"));
-    TEST_ASSERT_EQUAL_STRING("!0001.20N/00002.40W-Null Island", c);
+    TEST_ASSERT_EQUAL_STRING("!0001.20N/00002.40WMNull Island", c);
 }
 
 static void test_aprs101_pair(void)
@@ -126,20 +126,20 @@ static void test_bulletin_packet_pj6y(void)
     uint8_t want[355];
     uint16_t i;
     static const uint8_t ax_pj6y[] = {
-        0x82, 0xA0, 0xB4, 0x8C, 0x98, 0xA0, 0x60, 0xA0, 0x94, 0x6C, 0xB2, 0x40,
+        0x82, 0xA0, 0x8C, 0x98, 0x92, 0xA0, 0x60, 0xA0, 0x94, 0x6C, 0xB2, 0x40,
         0x40, 0x61, 0x03, 0xF0, 0x3A, 0x42, 0x4C, 0x4E, 0x33, 0x20, 0x20, 0x20,
         0x20, 0x20, 0x3A, 0x70, 0x6A, 0x36, 0x79, 0x20, 0x62, 0x6C, 0x6E,
     };
     static const char *st_pj6y =
-        "01111110010000010000010100101101001100010001100100000101000001100000010100101001"
+        "01111110010000010000010100110001000110010100100100000101000001100000010100101001"
         "00110110010011010000001000000010100001101100000000001111010111000100001000110010"
         "01110010110011000000010000000100000001000000010000000100010111000000111001010110"
-        "011011001001111000000100010001100011011001110110100101010110011101111110";
+        "01101100100111100000010001000110001101100111011001111101011111000101111110";
 
     /* bln pkt */
     UNITY_SET_DETAILS("aprs", "pj6y");
     TEST_ASSERT_EQUAL_INT((int)strlen(":BLN3     :pj6y bln"), aprs_bulletin(c, sizeof(c), 3, "pj6y bln"));
-    TEST_ASSERT_TRUE(aprs_packet(&p, "PJ6Y", 0, "APZFLP", 0, c, NULL));
+    TEST_ASSERT_TRUE(aprs_packet(&p, "PJ6Y", 0, "APFLIP", 0, c, NULL));
     TEST_ASSERT_EQUAL_UINT16(sizeof(ax_pj6y), p.ax25_len);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(ax_pj6y, p.ax25, sizeof(ax_pj6y));
     TEST_ASSERT_EQUAL_UINT16((uint16_t)strlen(st_pj6y), p.stuffed_len);
@@ -154,15 +154,16 @@ static void test_status_packet_yp0ta(void)
     char c[160];
     Packet p;
     static const uint8_t ax_yp0ta[] = {
-        0x82, 0xA0, 0xB4, 0x8C, 0x98, 0xA0, 0x60, 0xB2, 0xA0, 0x60, 0xA8, 0x82,
+        0x82, 0xA0, 0x8C, 0x98, 0x92, 0xA0, 0x60, 0xB2, 0xA0, 0x60, 0xA8, 0x82,
         0x40, 0x61, 0x03, 0xF0, 0x3E, 0x79, 0x70, 0x30, 0x74, 0x61, 0x20, 0x75,
         0x70,
     };
 
+
     /* status pkt */
     UNITY_SET_DETAILS("aprs", "yp0ta");
     TEST_ASSERT_EQUAL_INT((int)strlen(">yp0ta up"), aprs_status(c, sizeof(c), "yp0ta up"));
-    TEST_ASSERT_TRUE(aprs_packet(&p, "YP0TA", 0, "APZFLP", 0, c, NULL));
+    TEST_ASSERT_TRUE(aprs_packet(&p, "YP0TA", 0, "APFLIP", 0, c, NULL));
     TEST_ASSERT_EQUAL_UINT16(sizeof(ax_yp0ta), p.ax25_len);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(ax_yp0ta, p.ax25, sizeof(ax_yp0ta));
     TEST_ASSERT_EQUAL_HEX8(0x03, p.ax25[14]);
@@ -175,14 +176,14 @@ static void test_status_packet_yp0ta_bits(void)
     Packet p;
     uint8_t want[256];
     static const char *st_yp0ta =
-        "01111110010000010000010100101101001100010001100100000101000001100100110100000101"
+        "01111110010000010000010100110001000110010100100100000101000001100100110100000101"
         "00000110000101010100000100000010100001101100000000001111011111000100111100000111"
-        "0000011000010111010000110000001001010111000001110010011010011100101111110";
+        "0000011000010111010000110000001001010111000001110010000001100110001111110";
 
     /* status bits */
     UNITY_SET_DETAILS("aprs", "yp0ta bits");
     TEST_ASSERT_EQUAL_INT((int)strlen(">yp0ta up"), aprs_status(c, sizeof(c), "yp0ta up"));
-    TEST_ASSERT_TRUE(aprs_packet(&p, "YP0TA", 0, "APZFLP", 0, c, NULL));
+    TEST_ASSERT_TRUE(aprs_packet(&p, "YP0TA", 0, "APFLIP", 0, c, NULL));
     TEST_ASSERT_EQUAL_UINT16((uint16_t)strlen(st_yp0ta), p.stuffed_len);
     bits01(want, st_yp0ta);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(want, p.stuffed, p.stuffed_len);
@@ -193,16 +194,15 @@ static void test_one_message_packet(void)
     char msg[160];
     Packet p;
     static const uint8_t ax_yo3gnd[] = {
-        0x82, 0xA0, 0xB4, 0x8C, 0x98, 0xA0, 0x60, 0xB2, 0x9E, 0x66, 0x8E, 0x9C,
+        0x82, 0xA0, 0x8C, 0x98, 0x92, 0xA0, 0x60, 0xB2, 0x9E, 0x66, 0x8E, 0x9C,
         0x88, 0x63, 0x03, 0xF0, 0x3A, 0x59, 0x4F, 0x38, 0x59, 0x4C, 0x2D, 0x35,
         0x20, 0x20, 0x3A, 0x37, 0x33,
     };
 
-    /* 73 pkt */
     UNITY_SET_DETAILS("aprs", "yo3gnd");
     TEST_ASSERT_EQUAL_INT((int)strlen(":YO8YL-5  :73"), aprs_message(msg, sizeof(msg), "YO8YL", 5, "73"));
     TEST_ASSERT_EQUAL_STRING(":YO8YL-5  :73", msg);
-    TEST_ASSERT_TRUE(aprs_packet(&p, "YO3GND", 1, "APZFLP", 0, msg, NULL));
+    TEST_ASSERT_TRUE(aprs_packet(&p, "YO3GND", 1, "APFLIP", 0, msg, NULL));
     TEST_ASSERT_EQUAL_UINT16(sizeof(ax_yo3gnd), p.ax25_len);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(ax_yo3gnd, p.ax25, sizeof(ax_yo3gnd));
     TEST_ASSERT_EQUAL_UINT16((uint16_t)strlen(":YO8YL-5  :73"), p.payload_len);
@@ -216,15 +216,15 @@ static void test_one_message_packet_bits(void)
     Packet p;
     uint8_t want[320];
     static const char *st_yo3gnd =
-        "01111110010000010000010100101101001100010001100100000101000001100100110101111001"
+        "01111110010000010000010100110001000110010100100100000101000001100100110101111001"
         "01100110011100010011100100010001110001101100000000001111010111001001101011110010"
         "00011100100110100011001010110100101011000000010000000100010111001110110011001100"
-        "111011100111011001111110";
+        "1101111100101001001111110";
 
     /* 73 bits */
     UNITY_SET_DETAILS("aprs", "yo3gnd bits");
     TEST_ASSERT_EQUAL_INT((int)strlen(":YO8YL-5  :73"), aprs_message(msg, sizeof(msg), "YO8YL", 5, "73"));
-    TEST_ASSERT_TRUE(aprs_packet(&p, "YO3GND", 1, "APZFLP", 0, msg, NULL));
+    TEST_ASSERT_TRUE(aprs_packet(&p, "YO3GND", 1, "APFLIP", 0, msg, NULL));
     TEST_ASSERT_EQUAL_UINT16((uint16_t)strlen(st_yo3gnd), p.stuffed_len);
     bits01(want, st_yo3gnd);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(want, p.stuffed, p.stuffed_len);
@@ -236,21 +236,21 @@ static void test_jy1_message_packet(void)
     Packet p;
     uint8_t want[320];
     static const uint8_t ax_jy1[] = {
-        0x82, 0xA0, 0xB4, 0x8C, 0x98, 0xA0, 0x60, 0x94, 0xB2, 0x62, 0x40, 0x40,
+        0x82, 0xA0, 0x8C, 0x98, 0x92, 0xA0, 0x60, 0x94, 0xB2, 0x62, 0x40, 0x40,
         0x40, 0x61, 0x03, 0xF0, 0x3A, 0x59, 0x4F, 0x39, 0x4C, 0x49, 0x47, 0x2D,
         0x32, 0x20, 0x3A, 0x6A, 0x79, 0x31, 0x20, 0x68, 0x69,
     };
     static const char *st_jy1 =
-        "01111110010000010000010100101101001100010001100100000101000001100010100101001101"
+        "01111110010000010000010100110001000110010100100100000101000001100010100101001101"
         "01000110000000100000001000000010100001101100000000001111010111001001101011110010"
         "10011100001100101001001011100010101101000100110000000100010111000101011010011110"
-        "10001100000001000001011010010110011100111001011001111110";
+        "10001100000001000001011010010110011100111100110101111110";
 
     /* jy1 */
     UNITY_SET_DETAILS("aprs", "jy1");
     TEST_ASSERT_EQUAL_INT((int)strlen(":YO9LIG-2 :jy1 hi"), aprs_message(msg, sizeof(msg), "YO9LIG", 2, "jy1 hi"));
     TEST_ASSERT_EQUAL_STRING(":YO9LIG-2 :jy1 hi", msg);
-    TEST_ASSERT_TRUE(aprs_packet(&p, "JY1", 0, "APZFLP", 0, msg, NULL));
+    TEST_ASSERT_TRUE(aprs_packet(&p, "JY1", 0, "APFLIP", 0, msg, NULL));
     TEST_ASSERT_EQUAL_UINT16(sizeof(ax_jy1), p.ax25_len);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(ax_jy1, p.ax25, sizeof(ax_jy1));
     TEST_ASSERT_EQUAL_UINT16((uint16_t)strlen(st_jy1), p.stuffed_len);
@@ -264,21 +264,21 @@ static void test_yo9lig_message_packet(void)
     Packet p;
     uint8_t want[320];
     static const uint8_t ax_yo9lig[] = {
-        0x82, 0xA0, 0xB4, 0x8C, 0x98, 0xA0, 0x60, 0xB2, 0x9E, 0x72, 0x98, 0x92,
+        0x82, 0xA0, 0x8C, 0x98, 0x92, 0xA0, 0x60, 0xB2, 0x9E, 0x72, 0x98, 0x92,
         0x8E, 0x61, 0x03, 0xF0, 0x3A, 0x59, 0x4F, 0x33, 0x47, 0x4E, 0x44, 0x2D,
         0x31, 0x20, 0x3A, 0x6C, 0x69, 0x67, 0x20, 0x68, 0x69,
     };
     static const char *st_yo9lig =
-        "01111110010000010000010100101101001100010001100100000101000001100100110101111001"
+        "01111110010000010000010100110001000110010100100100000101000001100100110101111001"
         "01001110000110010100100101110001100001101100000000001111010111001001101011110010"
         "11001100111000100111001000100010101101001000110000000100010111000011011010010110"
-        "11100110000001000001011010010110001000110100011001111110";
+        "11100110000001000001011010010110001000110001110101111110";
 
     /* lig */
     UNITY_SET_DETAILS("aprs", "yo9lig");
     TEST_ASSERT_EQUAL_INT((int)strlen(":YO3GND-1 :lig hi"), aprs_message(msg, sizeof(msg), "YO3GND", 1, "lig hi"));
     TEST_ASSERT_EQUAL_STRING(":YO3GND-1 :lig hi", msg);
-    TEST_ASSERT_TRUE(aprs_packet(&p, "YO9LIG", 0, "APZFLP", 0, msg, NULL));
+    TEST_ASSERT_TRUE(aprs_packet(&p, "YO9LIG", 0, "APFLIP", 0, msg, NULL));
     TEST_ASSERT_EQUAL_UINT16(sizeof(ax_yo9lig), p.ax25_len);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(ax_yo9lig, p.ax25, sizeof(ax_yo9lig));
     TEST_ASSERT_EQUAL_UINT16((uint16_t)strlen(st_yo9lig), p.stuffed_len);
@@ -293,25 +293,25 @@ static void test_pos_packet_yo8yl(void)
     uint8_t want[591];
     uint16_t i;
     static const uint8_t ax_yo8yl_pos[] = {
-        0x82, 0xA0, 0xB4, 0x8C, 0x98, 0xA0, 0x60, 0xB2, 0x9E, 0x70, 0xB2, 0x98,
+        0x82, 0xA0, 0x8C, 0x98, 0x92, 0xA0, 0x60, 0xB2, 0x9E, 0x70, 0xB2, 0x98,
         0x40, 0x79, 0x03, 0xF0, 0x21, 0x34, 0x34, 0x32, 0x36, 0x2E, 0x32, 0x35,
-        0x4E, 0x2F, 0x30, 0x32, 0x36, 0x30, 0x35, 0x2E, 0x34, 0x31, 0x45, 0x2D,
+        0x4E, 0x2F, 0x30, 0x32, 0x36, 0x30, 0x35, 0x2E, 0x34, 0x31, 0x45, 0x4D,
         0x43, 0x69, 0x73, 0x6D, 0x69, 0x67, 0x69, 0x75, 0x20, 0x50, 0x61, 0x72,
         0x6B,
     };
     static const char *st_yo8yl_pos =
-        "01111110010000010000010100101101001100010001100100000101000001100100110101111001"
-        "00001110010011010001100100000010100111101100000000001111100000100001011000010110"
-        "00100110001101100011101000100110010101100011100101111010000001100010011000110110"
-        "00000110010101100011101000010110010001100101000101011010011000010100101101100111"
-        "01011011010010110111001101001011010101110000001000000101010000110010011101101011"
-        "0010101010010010001111110";
+        "011111100100000100000101001100010001100101001001000001010000011001001101011110"
+        "010000111001001101000110010000001010011110110000000000111110000010000101100001"
+        "011000100110001101100011101000100110010101100011100101111010000001100010011000"
+        "110110000001100101011000111010000101100100011001010001010110010110000101001011"
+        "011001110101101101001011011100110100101101010111000000100000010101000011001001"
+        "110110101101111101101010000001111110";
 
     /* pos pkt */
     UNITY_SET_DETAILS("aprs", "yo8yl");
-    TEST_ASSERT_EQUAL_INT((int)strlen("!4426.25N/02605.41E-Cismigiu Park"),
+    TEST_ASSERT_EQUAL_INT((int)strlen("!4426.25N/02605.41EMCismigiu Park"),
         aprs_pos(msg, sizeof(msg), "Cismigiu Park", "44.437461", "26.090215"));
-    TEST_ASSERT_TRUE(aprs_packet(&p, "YO8YL", 12, "APZFLP", 0, msg, NULL));
+    TEST_ASSERT_TRUE(aprs_packet(&p, "YO8YL", 12, "APFLIP", 0, msg, NULL));
     TEST_ASSERT_EQUAL_UINT16(sizeof(ax_yo8yl_pos), p.ax25_len);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(ax_yo8yl_pos, p.ax25, sizeof(ax_yo8yl_pos));
     TEST_ASSERT_EQUAL_UINT16((uint16_t)strlen(st_yo8yl_pos), p.stuffed_len);
@@ -369,7 +369,7 @@ static void test_loopish_calls(void)
 
         n = aprs_message(msg, sizeof(msg), dst, (i + 3) & 7, txt);
         TEST_ASSERT_TRUE(n > 0);
-        TEST_ASSERT_TRUE(aprs_packet(&p, src, sa, "APZFLP", 0, msg, NULL));
+        TEST_ASSERT_TRUE(aprs_packet(&p, src, sa, "APFLIP", 0, msg, NULL));
         TEST_ASSERT_EQUAL_UINT16((uint16_t)n, p.payload_len);
         TEST_ASSERT_EQUAL_UINT8_ARRAY((uint8_t*)msg, p.payload, p.payload_len);
         TEST_ASSERT_EQUAL_HEX8(0x03, p.ax25[14]);
@@ -392,7 +392,7 @@ static void test_loopish_calls(void)
     {
         snprintf(payload, sizeof(payload), ">%s", lose[i]);
         TEST_ASSERT_EQUAL_INT(0, aprs_message(msg, sizeof(msg), lose[i], (i + 3) & 7, "NOPE"));
-        TEST_ASSERT_FALSE(aprs_packet(&p, lose[i], i & 15, "APZFLP", 0, payload, NULL));
+        TEST_ASSERT_FALSE(aprs_packet(&p, lose[i], i & 15, "APFLIP", 0, payload, NULL));
         TEST_ASSERT_FALSE(aprs_packet(&p, "YO3GND", i & 15, lose[i], 0, payload, NULL));
     }
 }
@@ -413,7 +413,7 @@ static void test_loopish_calls_old_pool(void)
 
     /* old pool */
     UNITY_SET_DETAILS("aprs", "loop old");
-    ax7(dst_ax, "APZFLP", 0, 0);
+    ax7(dst_ax, "APFLIP", 0, 0);
 
     for (i = 0; i < 30; i++)
     {
@@ -432,7 +432,7 @@ static void test_loopish_calls_old_pool(void)
 
         n = aprs_message(msg, sizeof(msg), dst, da, txt);
         TEST_ASSERT_TRUE(n > 0);
-        TEST_ASSERT_TRUE(aprs_packet(&p, src, sa, "APZFLP", 0, msg, NULL));
+        TEST_ASSERT_TRUE(aprs_packet(&p, src, sa, "APFLIP", 0, msg, NULL));
         TEST_ASSERT_EQUAL_UINT16((uint16_t)n, p.payload_len);
         TEST_ASSERT_EQUAL_UINT8_ARRAY((uint8_t*)msg, p.payload, p.payload_len);
 
