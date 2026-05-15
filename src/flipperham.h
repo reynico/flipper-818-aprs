@@ -12,7 +12,7 @@
 #define HAM_N 8
 
 #define MY_CALL "FL1PER"
-#define MY_TOCALL "APZFLP"
+#define MY_TOCALL "APFLIP"
 
 #define CFG_DIR "/ext/apps_data/aprstx"
 #define CFG_FILE "/ext/apps_data/aprstx/cfg2.bin"

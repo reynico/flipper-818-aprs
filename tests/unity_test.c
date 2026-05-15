@@ -105,7 +105,7 @@ int main(void)
     UNITY_SET_DETAILS("aprs", "message-ish");
     TEST_ASSERT_EQUAL_INT((int)strlen(":YO8YL-5  :73"), aprs_message(msg, sizeof(msg), "YO8YL", 5, "73"));
     TEST_ASSERT_EQUAL_STRING(":YO8YL-5  :73", msg);
-    TEST_ASSERT_TRUE(aprs_packet(&p, "YO3GND", 1, "APZFLP", 0, msg, NULL));
+    TEST_ASSERT_TRUE(aprs_packet(&p, "YO3GND", 1, "APFLIP", 0, msg, NULL));
     TEST_ASSERT_EQUAL_UINT16(29, p.ax25_len);
     TEST_ASSERT_EQUAL_HEX8(0x82, p.ax25[0]);
     TEST_ASSERT_EQUAL_HEX8(0x63, p.ax25[13]);
