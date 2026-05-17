@@ -1200,6 +1200,20 @@ void flipperham_beacon_enter(FlipperHamApp *app)
                     furi_delay_ms(20);
                 }
                 afsk_tx_stop(&app->afsk_tx);
+
+                app->tx_type = 5;
+                txstart(app);
+                if (app->tx_ok)
+                {
+                    afsk_tx_start(&app->afsk_tx, app->wave, app->wave_len);
+                    while (app->afsk_tx.active)
+                    {
+                        view_port_update(vp);
+                        furi_delay_ms(20);
+                    }
+                    afsk_tx_stop(&app->afsk_tx);
+                }
+
                 furi_delay_ms(50);
                 dra818v_ptt_off(&app->dra);
                 furi_hal_light_set(LightGreen, 0);

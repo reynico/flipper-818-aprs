@@ -1,5 +1,6 @@
 #include "rf_gen.h"
 #include "aprs.h"
+#include "version.h"
 
 #include <furi_hal.h>
 
@@ -231,6 +232,13 @@ void txstart(FlipperHamApp *app)
                 (double)(app->gps.speed_knots * 1.852f), (double)vbat);
         }
         if (!aprs_pos(message, sizeof(message), comment, lat_s, lon_s))
+            return;
+    }
+    else if (app->tx_type == 5)
+    {
+        if (!aprs_status(message, sizeof(message),
+                         "Flipper Zero TRX " APP_VERSION_ID
+                         " github.com/reynico/flipper-818-aprs"))
             return;
     }
     else
