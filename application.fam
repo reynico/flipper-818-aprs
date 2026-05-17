@@ -39,6 +39,16 @@ try:
 except Exception:
     pass
 
+version_id = git_version
+if version_id == "1.0.0":
+    try:
+        version_id = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=app_dir, stderr=subprocess.DEVNULL
+        ).decode().strip()
+    except Exception:
+        version_id = "dev"
+
 
 App(
     appid="818aprs",
@@ -51,6 +61,7 @@ App(
         f'APP_BUILD_HOST=\\"{git_host}\\"',
         f'APP_BUILD_TIME=\\"{git_built}\\"',
         f'APP_VER_TEXT=\\"{git_version}\\"',
+        f'APP_VERSION_ID=\\"{version_id}\\"',
     ],
     sources=[
         "app.c",

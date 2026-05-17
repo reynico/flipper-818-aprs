@@ -15,3 +15,7 @@
 #ifndef APP_BUILD_TIME
 #define APP_BUILD_TIME "unknown"
 #endif
+
+#ifndef APP_VERSION_ID
+#define APP_VERSION_ID "dev"
+#endif
