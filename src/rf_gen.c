@@ -20,6 +20,34 @@ const FlipperHamModemProfile flipperham_modem_profiles[] = {
     {"1200bd", 1200, 1200, 2200},
 };
 
+const FlipperHamSymbol flipperham_symbols[] = {
+    {"Mac /M", '/', 'M'},
+    {"Car", '/', '>'},
+    {"Jeep", '/', 'j'},
+    {"Truck", '/', 'k'},
+    {"Van", '/', 'v'},
+    {"Motorcycle", '/', '<'},
+    {"Bicycle", '/', 'b'},
+    {"Jogger", '/', '['},
+    {"House", '/', '-'},
+    {"Tent", '/', ';'},
+    {"Boat", '/', 's'},
+    {"Aircraft", '/', '\''},
+    {"Balloon", '/', 'O'},
+    {"Digi", '/', '#'},
+    {"Weather", '/', '_'},
+    {"Portable", '/', '/'},
+};
+
+const uint8_t flipperham_symbols_n = sizeof(flipperham_symbols) / sizeof(flipperham_symbols[0]);
+
+static const FlipperHamSymbol *symbol_pick(FlipperHamApp *app)
+{
+    if (app->pos_symbol >= flipperham_symbols_n)
+        return &flipperham_symbols[0];
+    return &flipperham_symbols[app->pos_symbol];
+}
+
 static const char *aprs_path_pick(FlipperHamApp *app)
 {
     static const char *paths[] = {"None", "RFONLY", "NOGATE", "WIDE1-1", "WIDE2-2", "ARISS", "APRSAT", "Custom"};
@@ -146,6 +174,7 @@ void txstart(FlipperHamApp *app)
     const FlipperHamModemProfile *p;
     const char *path;
     const char *src;
+    const FlipperHamSymbol *sym;
     uint16_t i;
     uint16_t n;
     uint8_t src_ssid;
@@ -176,6 +205,7 @@ void txstart(FlipperHamApp *app)
     if (app->tx_msg_index >= TXT_N)
         return;
     p = &flipperham_modem_profiles[1];
+    sym = symbol_pick(app);
 
     if (app->tx_type == 0)
     {
@@ -210,11 +240,13 @@ void txstart(FlipperHamApp *app)
         {
             if (!aprs_pos_compressed(message, sizeof(message), app->pos_name[app->tx_msg_index],
                                      app->pos_lat[app->tx_msg_index],
-                                     app->pos_lon[app->tx_msg_index], false, 0, 0))
+                                     app->pos_lon[app->tx_msg_index], sym->table, sym->code,
+                                     false, 0, 0))
                 return;
         }
         else if (!aprs_pos(message, sizeof(message), app->pos_name[app->tx_msg_index],
-                           app->pos_lat[app->tx_msg_index], app->pos_lon[app->tx_msg_index]))
+                           app->pos_lat[app->tx_msg_index], app->pos_lon[app->tx_msg_index],
+                           sym->table, sym->code))
             return;
         {
             size_t len = strlen(message);
@@ -240,11 +272,12 @@ void txstart(FlipperHamApp *app)
         }
         if (app->pos_compressed)
         {
-            if (!aprs_pos_compressed(message, sizeof(message), comment, lat_s, lon_s, true,
-                                     app->gps.course, app->gps.speed_knots))
+            if (!aprs_pos_compressed(message, sizeof(message), comment, lat_s, lon_s, sym->table,
+                                     sym->code, true, app->gps.course, app->gps.speed_knots))
                 return;
         }
-        else if (!aprs_pos(message, sizeof(message), comment, lat_s, lon_s))
+        else if (!aprs_pos(message, sizeof(message), comment, lat_s, lon_s, sym->table,
+                           sym->code))
             return;
     }
     else if (app->tx_type == 5)

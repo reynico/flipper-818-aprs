@@ -95,7 +95,7 @@ int main(void)
     TEST_ASSERT_EQUAL_STRING("4426.25N", a);
     
     TEST_ASSERT_EQUAL_INT(9, aprs_lon(b, sizeof(b), "26.090215"));
-    TEST_ASSERT_EQUAL_STRING("02605.41E", b); TEST_ASSERT_EQUAL_INT(33, aprs_pos(c, sizeof(c), "Cismigiu Park", "44.437461", "26.090215"));
+    TEST_ASSERT_EQUAL_STRING("02605.41E", b); TEST_ASSERT_EQUAL_INT(33, aprs_pos(c, sizeof(c), "Cismigiu Park", "44.437461", "26.090215", '/', 'M'));
     TEST_ASSERT_EQUAL_STRING("!4426.25N/02605.41E-Cismigiu Park", c); TEST_ASSERT_TRUE(aprs_ll_clamp(a, sizeof(a), "123.45", 0) > 0);
     TEST_ASSERT_EQUAL_STRING("90.00000", a);
     UnityConcludeTest();

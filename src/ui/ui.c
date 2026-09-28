@@ -20,6 +20,7 @@ static void c2(void *context, uint32_t index);
 static void aprs_path_change(VariableItem *item);
 static void debug_change(VariableItem *item);
 static void compressed_change(VariableItem *item);
+static void symbol_change(VariableItem *item);
 static void debug_rx_change(VariableItem *item);
 static void notify_change(VariableItem *item);
 static void vhf_freq_change(VariableItem *item);
@@ -901,6 +902,13 @@ void tx_settings_menu_build(FlipperHamApp *app)
     it = variable_item_list_add(app->tx_settings_menu, "Compressed Pos", 2, compressed_change, app);
     variable_item_set_current_value_index(it, app->pos_compressed ? 1 : 0);
     variable_item_set_current_value_text(it, app->pos_compressed ? "Yes" : "No");
+
+    if (app->pos_symbol >= flipperham_symbols_n)
+        app->pos_symbol = 0;
+    it = variable_item_list_add(app->tx_settings_menu, "Symbol", flipperham_symbols_n,
+                                symbol_change, app);
+    variable_item_set_current_value_index(it, app->pos_symbol);
+    variable_item_set_current_value_text(it, flipperham_symbols[app->pos_symbol].name);
 }
 
 void rx_settings_menu_build(FlipperHamApp *app)
@@ -1151,6 +1159,17 @@ static void compressed_change(VariableItem *item)
 
     app->pos_compressed = variable_item_get_current_value_index(item) ? true : false;
     variable_item_set_current_value_text(item, app->pos_compressed ? "Yes" : "No");
+    cfgsave(app);
+}
+
+static void symbol_change(VariableItem *item)
+{
+    FlipperHamApp *app = variable_item_get_context(item);
+
+    app->pos_symbol = variable_item_get_current_value_index(item);
+    if (app->pos_symbol >= flipperham_symbols_n)
+        app->pos_symbol = 0;
+    variable_item_set_current_value_text(item, flipperham_symbols[app->pos_symbol].name);
     cfgsave(app);
 }
 
