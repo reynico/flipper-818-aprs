@@ -1022,8 +1022,8 @@ static void gps_debug_draw(Canvas *canvas, void *ctx)
     snprintf(line, sizeof(line), "LON: %.6f", (double)app->gps.lon);
     canvas_draw_str(canvas, 0, 42, line);
 
-    snprintf(line, sizeof(line), "SPD: %.1f kn  CRS: %.1f",
-        (double)app->gps.speed_knots, (double)app->gps.course);
+    snprintf(line, sizeof(line), "SPD: %.1f km/h  CRS: %.1f",
+        (double)(app->gps.speed_knots * 1.852f), (double)app->gps.course);
     canvas_draw_str(canvas, 0, 52, line);
 
     snprintf(line, sizeof(line), "ALT: %.1f m", (double)app->gps.altitude);
@@ -1124,8 +1124,8 @@ static void beacon_draw(Canvas *canvas, void *ctx)
         canvas_draw_str(canvas, 0, 32, line);
         snprintf(line, sizeof(line), "LON: %.5f", (double)app->gps.lon);
         canvas_draw_str(canvas, 0, 42, line);
-        snprintf(line, sizeof(line), "SPD:%.1fkn  CRS:%.0f  ALT:%.0fm",
-            (double)app->gps.speed_knots, (double)app->gps.course,
+        snprintf(line, sizeof(line), "SPD:%.0fkm/h CRS:%.0f ALT:%.0fm",
+            (double)(app->gps.speed_knots * 1.852f), (double)app->gps.course,
             (double)app->gps.altitude);
         canvas_draw_str(canvas, 0, 52, line);
     }
