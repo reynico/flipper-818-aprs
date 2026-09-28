@@ -13,6 +13,8 @@ int aprs_bulletin(char *out, uint16_t n, uint8_t index, const char *text);
 int aprs_status(char *out, uint16_t n, const char *text);
 int aprs_message(char *out, uint16_t n, const char *dst, uint8_t ssid, const char *text);
 int aprs_pos(char *out, uint16_t n, const char *name, const char *lat, const char *lon);
+int aprs_pos_compressed(char *out, uint16_t n, const char *name, const char *lat, const char *lon,
+                        bool has_cs, float course, float speed_knots);
 
 bool aprs_packet(Packet *p, const char *from, uint8_t from_ssid, const char *to, uint8_t to_ssid,
                  const char *payload, const char *path);

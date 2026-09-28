@@ -1,6 +1,7 @@
 #pragma once
 
 #include <furi.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define TXT_LEN 68
@@ -60,7 +61,10 @@ typedef struct
     uint8_t gps_enabled;
     uint16_t beacon_interval;
     char gps_comment[TXT_LEN];
+    uint8_t pos_compressed;
 } FlipperHamCfg;
+
+#define CFG_MIN_SIZE offsetof(FlipperHamCfg, pos_compressed)
 
 enum
 {
@@ -126,6 +130,7 @@ enum
     FlipperHamTxSettingsIndexLeadin,
     FlipperHamTxSettingsIndexPreamble,
     FlipperHamTxSettingsIndexDebugTx,
+    FlipperHamTxSettingsIndexCompressed,
 };
 
 enum

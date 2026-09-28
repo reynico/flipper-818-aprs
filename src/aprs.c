@@ -1,5 +1,6 @@
 #include "aprs.h"
 
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -263,6 +264,66 @@ int aprs_pos(char *out, uint16_t n, const char *name, const char *lat, const cha
     if (aprs_lon(b, sizeof(b), lon) <= 0)
         return 0;
     return snprintf(out, n, "!%s/%sM%s", a, b, name ? name : "");
+}
+
+static void aprs_b91(char *out, uint32_t v)
+{
+    int8_t i;
+
+    for (i = 3; i >= 0; i--)
+    {
+        out[i] = (char)(33 + v % 91);
+        v /= 91;
+    }
+}
+
+int aprs_pos_compressed(char *out, uint16_t n, const char *name, const char *lat, const char *lon,
+                        bool has_cs, float course, float speed_knots)
+{
+    char y[5];
+    char x[5];
+    char c;
+    char s;
+    char t;
+    float la;
+    float lo;
+    char *end;
+    int sp;
+
+    if (!out || !n || !lat || !lon)
+        return 0;
+
+    la = strtof(lat, &end);
+    if (end == lat || *end || la < -90.0f || la > 90.0f)
+        return 0;
+    lo = strtof(lon, &end);
+    if (end == lon || *end || lo < -180.0f || lo > 180.0f)
+        return 0;
+
+    aprs_b91(y, (uint32_t)((double)380926 * ((double)90 - (double)la)));
+    aprs_b91(x, (uint32_t)((double)190463 * ((double)180 + (double)lo)));
+    y[4] = 0;
+    x[4] = 0;
+
+    c = ' ';
+    s = ' ';
+    t = ' ';
+    if (has_cs)
+    {
+        if (course < 0.0f || course >= 360.0f)
+            course = 0.0f;
+        c = (char)(33 + (int)(course / 4.0f + 0.5f) % 90);
+
+        if (speed_knots < 0.0f)
+            speed_knots = 0.0f;
+        sp = (int)(logf(speed_knots + 1.0f) / logf(1.08f) + 0.5f);
+        if (sp > 89)
+            sp = 89;
+        s = (char)(33 + sp);
+        t = (char)(33 + 0x20 + 0x18 + 0x06);
+    }
+
+    return snprintf(out, n, "!/%s%sM%c%c%c%s", y, x, c, s, t, name ? name : "");
 }
 
 int aprs_bulletin(char *out, uint16_t n, uint8_t index, const char *text)

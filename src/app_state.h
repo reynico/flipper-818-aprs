@@ -138,6 +138,7 @@ typedef struct FlipperHamApp
     char c2_h[24];
     char readme_h[640];
     bool debug_tx;
+    bool pos_compressed;
     uint8_t aprs_path_index;
 
     Dra818v dra;

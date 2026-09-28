@@ -19,6 +19,7 @@ static void ham_morse_play(FlipperHamApp *app);
 static void c2(void *context, uint32_t index);
 static void aprs_path_change(VariableItem *item);
 static void debug_change(VariableItem *item);
+static void compressed_change(VariableItem *item);
 static void debug_rx_change(VariableItem *item);
 static void notify_change(VariableItem *item);
 static void vhf_freq_change(VariableItem *item);
@@ -896,6 +897,10 @@ void tx_settings_menu_build(FlipperHamApp *app)
     it = variable_item_list_add(app->tx_settings_menu, "Debug TX", 2, debug_change, app);
     variable_item_set_current_value_index(it, app->debug_tx ? 1 : 0);
     variable_item_set_current_value_text(it, app->debug_tx ? "Yes" : "No");
+
+    it = variable_item_list_add(app->tx_settings_menu, "Compressed Pos", 2, compressed_change, app);
+    variable_item_set_current_value_index(it, app->pos_compressed ? 1 : 0);
+    variable_item_set_current_value_text(it, app->pos_compressed ? "Yes" : "No");
 }
 
 void rx_settings_menu_build(FlipperHamApp *app)
@@ -1137,6 +1142,15 @@ static void debug_change(VariableItem *item)
 
     app->debug_tx = variable_item_get_current_value_index(item) ? 1 : 0;
     variable_item_set_current_value_text(item, app->debug_tx ? "Yes" : "No");
+    cfgsave(app);
+}
+
+static void compressed_change(VariableItem *item)
+{
+    FlipperHamApp *app = variable_item_get_context(item);
+
+    app->pos_compressed = variable_item_get_current_value_index(item) ? true : false;
+    variable_item_set_current_value_text(item, app->pos_compressed ? "Yes" : "No");
     cfgsave(app);
 }
 

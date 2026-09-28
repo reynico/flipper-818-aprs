@@ -206,8 +206,15 @@ void txstart(FlipperHamApp *app)
             return;
         if (!app->pos_lon[app->tx_msg_index][0])
             return;
-        if (!aprs_pos(message, sizeof(message), app->pos_name[app->tx_msg_index],
-                      app->pos_lat[app->tx_msg_index], app->pos_lon[app->tx_msg_index]))
+        if (app->pos_compressed)
+        {
+            if (!aprs_pos_compressed(message, sizeof(message), app->pos_name[app->tx_msg_index],
+                                     app->pos_lat[app->tx_msg_index],
+                                     app->pos_lon[app->tx_msg_index], false, 0, 0))
+                return;
+        }
+        else if (!aprs_pos(message, sizeof(message), app->pos_name[app->tx_msg_index],
+                           app->pos_lat[app->tx_msg_index], app->pos_lon[app->tx_msg_index]))
             return;
         {
             size_t len = strlen(message);
@@ -231,7 +238,13 @@ void txstart(FlipperHamApp *app)
             snprintf(comment, sizeof(comment), "Flipper Zero | Spd:%.0fkm/h Bat:%.2fV",
                 (double)(app->gps.speed_knots * 1.852f), (double)vbat);
         }
-        if (!aprs_pos(message, sizeof(message), comment, lat_s, lon_s))
+        if (app->pos_compressed)
+        {
+            if (!aprs_pos_compressed(message, sizeof(message), comment, lat_s, lon_s, true,
+                                     app->gps.course, app->gps.speed_knots))
+                return;
+        }
+        else if (!aprs_pos(message, sizeof(message), comment, lat_s, lon_s))
             return;
     }
     else if (app->tx_type == 5)
