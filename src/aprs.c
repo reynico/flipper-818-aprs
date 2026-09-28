@@ -254,16 +254,26 @@ int aprs_lon(char *out, uint16_t n, const char *s)
     return aprs_coord(out, n, s, 1);
 }
 
-int aprs_pos(char *out, uint16_t n, const char *name, const char *lat, const char *lon)
+static bool aprs_sym_ok(char table, char code)
+{
+    if (table != '/' && table != '\\')
+        return false;
+    return code > ' ' && code <= '~';
+}
+
+int aprs_pos(char *out, uint16_t n, const char *name, const char *lat, const char *lon,
+             char sym_table, char sym_code)
 {
     char a[9];
     char b[10];
 
+    if (!aprs_sym_ok(sym_table, sym_code))
+        return 0;
     if (aprs_lat(a, sizeof(a), lat) <= 0)
         return 0;
     if (aprs_lon(b, sizeof(b), lon) <= 0)
         return 0;
-    return snprintf(out, n, "!%s/%sM%s", a, b, name ? name : "");
+    return snprintf(out, n, "!%s%c%s%c%s", a, sym_table, b, sym_code, name ? name : "");
 }
 
 static void aprs_b91(char *out, uint32_t v)
@@ -278,7 +288,8 @@ static void aprs_b91(char *out, uint32_t v)
 }
 
 int aprs_pos_compressed(char *out, uint16_t n, const char *name, const char *lat, const char *lon,
-                        bool has_cs, float course, float speed_knots)
+                        char sym_table, char sym_code, bool has_cs, float course,
+                        float speed_knots)
 {
     char y[5];
     char x[5];
@@ -291,6 +302,8 @@ int aprs_pos_compressed(char *out, uint16_t n, const char *name, const char *lat
     int sp;
 
     if (!out || !n || !lat || !lon)
+        return 0;
+    if (!aprs_sym_ok(sym_table, sym_code))
         return 0;
 
     la = strtof(lat, &end);
@@ -323,7 +336,8 @@ int aprs_pos_compressed(char *out, uint16_t n, const char *name, const char *lat
         t = (char)(33 + 0x20 + 0x18 + 0x06);
     }
 
-    return snprintf(out, n, "!/%s%sM%c%c%c%s", y, x, c, s, t, name ? name : "");
+    return snprintf(out, n, "!%c%s%s%c%c%c%c%s", sym_table, y, x, sym_code, c, s, t,
+                    name ? name : "");
 }
 
 int aprs_bulletin(char *out, uint16_t n, uint8_t index, const char *text)

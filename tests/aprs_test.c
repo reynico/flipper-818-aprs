@@ -65,9 +65,9 @@ static void test_lat_lon_and_pos(void)
     TEST_ASSERT_EQUAL_STRING("02605.41E", b);
 
 
-    TEST_ASSERT_EQUAL_INT(33, aprs_pos(c, sizeof(c), "Cismigiu Park", "44.437461", "26.090215"));
+    TEST_ASSERT_EQUAL_INT(33, aprs_pos(c, sizeof(c), "Cismigiu Park", "44.437461", "26.090215", '/', 'M'));
     TEST_ASSERT_EQUAL_STRING("!4426.25N/02605.41EMCismigiu Park", c);
-    TEST_ASSERT_EQUAL_INT(31, aprs_pos(c, sizeof(c), "Null Island", "0.02", "-0.04"));
+    TEST_ASSERT_EQUAL_INT(31, aprs_pos(c, sizeof(c), "Null Island", "0.02", "-0.04", '/', 'M'));
     TEST_ASSERT_EQUAL_STRING("!0001.20N/00002.40WMNull Island", c);
 }
 
@@ -310,7 +310,7 @@ static void test_pos_packet_yo8yl(void)
     /* pos pkt */
     UNITY_SET_DETAILS("aprs", "yo8yl");
     TEST_ASSERT_EQUAL_INT((int)strlen("!4426.25N/02605.41EMCismigiu Park"),
-        aprs_pos(msg, sizeof(msg), "Cismigiu Park", "44.437461", "26.090215"));
+        aprs_pos(msg, sizeof(msg), "Cismigiu Park", "44.437461", "26.090215", '/', 'M'));
     TEST_ASSERT_TRUE(aprs_packet(&p, "YO8YL", 12, "APFLIP", 0, msg, NULL));
     TEST_ASSERT_EQUAL_UINT16(sizeof(ax_yo8yl_pos), p.ax25_len);
     TEST_ASSERT_EQUAL_UINT8_ARRAY(ax_yo8yl_pos, p.ax25, sizeof(ax_yo8yl_pos));
@@ -457,17 +457,34 @@ static void test_pos_compressed(void)
 
     UNITY_SET_DETAILS("aprs", "compressed");
     /* APRS101 ch9 example: 49 30'N 72 45'W -> 5L!! <*e7 */
-    TEST_ASSERT_EQUAL_INT(14, aprs_pos_compressed(c, sizeof(c), "", "49.5", "-72.75", false, 0, 0));
+    TEST_ASSERT_EQUAL_INT(14, aprs_pos_compressed(c, sizeof(c), "", "49.5", "-72.75", '/', 'M', false, 0, 0));
     TEST_ASSERT_EQUAL_STRING("!/5L!!<*e7M   ", c);
 
     /* APRS101 ch9 example: course 88, speed 36.2 kn -> c='7' s='P' */
-    TEST_ASSERT_EQUAL_INT(18, aprs_pos_compressed(c, sizeof(c), "test", "49.5", "-72.75", true, 88.0f, 36.2f));
+    TEST_ASSERT_EQUAL_INT(18, aprs_pos_compressed(c, sizeof(c), "test", "49.5", "-72.75", '/', 'M', true, 88.0f, 36.2f));
     TEST_ASSERT_EQUAL_STRING("!/5L!!<*e7M7P_test", c);
 
-    TEST_ASSERT_EQUAL_INT(14, aprs_pos_compressed(c, sizeof(c), NULL, "-90", "180", false, 0, 0));
-    TEST_ASSERT_EQUAL_INT(0, aprs_pos_compressed(c, sizeof(c), "", "91", "0", false, 0, 0));
-    TEST_ASSERT_EQUAL_INT(0, aprs_pos_compressed(c, sizeof(c), "", "0", "-181", false, 0, 0));
-    TEST_ASSERT_EQUAL_INT(0, aprs_pos_compressed(c, sizeof(c), "", "abc", "0", false, 0, 0));
+    TEST_ASSERT_EQUAL_INT(14, aprs_pos_compressed(c, sizeof(c), NULL, "-90", "180", '/', 'M', false, 0, 0));
+    TEST_ASSERT_EQUAL_INT(0, aprs_pos_compressed(c, sizeof(c), "", "91", "0", '/', 'M', false, 0, 0));
+    TEST_ASSERT_EQUAL_INT(0, aprs_pos_compressed(c, sizeof(c), "", "0", "-181", '/', 'M', false, 0, 0));
+    TEST_ASSERT_EQUAL_INT(0, aprs_pos_compressed(c, sizeof(c), "", "abc", "0", '/', 'M', false, 0, 0));
+}
+
+static void test_pos_symbol(void)
+{
+    char c[64];
+
+    UNITY_SET_DETAILS("aprs", "symbol");
+    TEST_ASSERT_EQUAL_INT(20, aprs_pos(c, sizeof(c), "", "0.02", "-0.04", '/', '>'));
+    TEST_ASSERT_EQUAL_STRING("!0001.20N/00002.40W>", c);
+    TEST_ASSERT_EQUAL_INT(20, aprs_pos(c, sizeof(c), "", "0.02", "-0.04", '\\', 'k'));
+    TEST_ASSERT_EQUAL_STRING("!0001.20N\\00002.40Wk", c);
+    TEST_ASSERT_EQUAL_INT(14, aprs_pos_compressed(c, sizeof(c), "", "49.5", "-72.75", '\\', '>', false, 0, 0));
+    TEST_ASSERT_EQUAL_STRING("!\\5L!!<*e7>   ", c);
+
+    TEST_ASSERT_EQUAL_INT(0, aprs_pos(c, sizeof(c), "", "0", "0", 'X', '>'));
+    TEST_ASSERT_EQUAL_INT(0, aprs_pos(c, sizeof(c), "", "0", "0", '/', ' '));
+    TEST_ASSERT_EQUAL_INT(0, aprs_pos_compressed(c, sizeof(c), "", "0", "0", '/', 0, false, 0, 0));
 }
 
 int main(void)
@@ -489,5 +506,6 @@ int main(void)
     RUN_TEST(test_loopish_calls);
     RUN_TEST(test_loopish_calls_old_pool);
     RUN_TEST(test_pos_compressed);
+    RUN_TEST(test_pos_symbol);
     return suiteTearDown(UnityEnd());
 }
