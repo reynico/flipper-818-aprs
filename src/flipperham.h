@@ -62,6 +62,7 @@ typedef struct
     uint16_t beacon_interval;
     char gps_comment[TXT_LEN];
     uint8_t pos_compressed;
+    uint8_t pos_symbol;
 } FlipperHamCfg;
 
 #define CFG_MIN_SIZE offsetof(FlipperHamCfg, pos_compressed)
@@ -131,6 +132,7 @@ enum
     FlipperHamTxSettingsIndexPreamble,
     FlipperHamTxSettingsIndexDebugTx,
     FlipperHamTxSettingsIndexCompressed,
+    FlipperHamTxSettingsIndexSymbol,
 };
 
 enum
