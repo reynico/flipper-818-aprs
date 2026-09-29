@@ -12,3 +12,5 @@ cc -std=gnu99 -Wall -Wextra -Itests/unity tests/smartbeacon_test.c tests/unity/u
 ./tests/build/smartbeacon_test
 cc -std=gnu99 -Wall -Wextra -Itests/unity tests/aprs_msg_test.c tests/unity/unity.c src/aprs.c src/aprs_msg.c src/packet.c -lm -o tests/build/aprs_msg_test
 ./tests/build/aprs_msg_test
+cc -std=gnu99 -Wall -Wextra -Itests/unity tests/kiss_test.c tests/unity/unity.c src/kiss.c src/aprs.c src/aprs_msg.c src/packet.c -lm -o tests/build/kiss_test
+./tests/build/kiss_test

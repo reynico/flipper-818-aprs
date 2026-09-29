@@ -106,6 +106,8 @@ static void rx_process_bit(AfskRx *rx, uint8_t bit)
                 rx->dbg_last_frame_len = rx->frame_len;
                 AfskFrame frame;
                 if(ax25_decode_frame(rx->frame_buf, rx->frame_len, &frame)) {
+                    frame.raw = rx->frame_buf;
+                    frame.raw_len = rx->frame_len - 2;
                     if(rx->frame_cb)
                         rx->frame_cb(&frame, rx->frame_ctx);
                 } else {

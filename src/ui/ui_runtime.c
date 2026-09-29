@@ -5,6 +5,7 @@
 #include "../dra818v.h"
 #include "../ax25_decode.h"
 #include "../gps.h"
+#include "../kiss.h"
 
 #include <furi_hal.h>
 #include <furi_hal_resources.h>
@@ -13,6 +14,7 @@
 
 #include <storage/storage.h>
 #include <furi_hal_rtc.h>
+#include <furi_hal_usb_cdc.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -372,6 +374,8 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->msg_wait = false;
     app->msg_acked = false;
     app->msg_cancel = false;
+    app->kiss = NULL;
+    app->kiss_active = false;
     ack_cache_reset(&app->ack_cache);
     app->has_decoded = false;
     app->rx_active = false;
@@ -414,6 +418,8 @@ FlipperHamApp *flipperham_app_alloc(void)
     submenu_add_item(app->submenu, "Send", FlipperHamMenuIndexSend, flipperham_menu_callback, app);
     submenu_add_item(
         app->submenu, "Receive", FlipperHamMenuIndexRx, flipperham_menu_callback, app);
+    submenu_add_item(
+        app->submenu, "KISS TNC (USB)", FlipperHamMenuIndexKiss, flipperham_menu_callback, app);
     submenu_add_item(app->submenu, "Settings", FlipperHamMenuIndexSettings,
                      flipperham_menu_callback, app);
     submenu_add_item(app->submenu, "About", FlipperHamMenuIndexReadme,
@@ -1052,9 +1058,8 @@ static void tx_bufs_free(FlipperHamApp *app)
     app->wave = NULL;
 }
 
-static bool tx_run(FlipperHamApp *app, ViewPort *vp)
+static bool tx_send(FlipperHamApp *app, ViewPort *vp)
 {
-    txstart(app);
     if (!app->tx_ok || !dra818v_ensure_ready(app))
         return false;
 
@@ -1076,6 +1081,12 @@ static bool tx_run(FlipperHamApp *app, ViewPort *vp)
     furi_hal_light_set(LightGreen, 0);
     furi_hal_light_set(LightBlue, 0);
     return true;
+}
+
+static bool tx_run(FlipperHamApp *app, ViewPort *vp)
+{
+    txstart(app);
+    return tx_send(app, vp);
 }
 
 static void ack_service(FlipperHamApp *app, ViewPort *vp)
@@ -1831,4 +1842,284 @@ static void flipperham_send_message_acked(FlipperHamApp *app)
     app->msg_no_out[0] = 0;
     app->msg_cancel = false;
     tx_bufs_free(app);
+}
+
+/* ── KISS TNC over USB ─────────────────────────────────────────── */
+
+#define KISS_CDC_IF 1
+#define KISS_RXQ_N 4
+#define KISS_TXQ_N 2
+#define KISS_TX_GAP_MS 1000
+
+typedef struct
+{
+    uint16_t len;
+    uint8_t data[KISS_FRAME_MAX];
+} KissFrame;
+
+struct Kiss
+{
+    FuriMessageQueue *rxq;
+    FuriMessageQueue *txq;
+    KissRx in;
+    KissFrame cb_frame;
+    KissFrame work;
+    uint8_t out[KISS_FRAME_MAX * 2 + 3];
+    uint8_t usb_buf[CDC_DATA_SZ];
+    volatile bool tx_busy;
+    volatile uint32_t rx_n;
+    volatile uint32_t drop_n;
+    uint32_t tx_n;
+    uint32_t reject_n;
+    uint32_t last_tx;
+    bool usb_ok;
+};
+
+static void kiss_cdc_tx(void *ctx)
+{
+    Kiss *k = ctx;
+    k->tx_busy = false;
+}
+
+static void kiss_cdc_rx(void *ctx)
+{
+    UNUSED(ctx);
+}
+
+static void kiss_cdc_state(void *ctx, CdcState state)
+{
+    UNUSED(ctx);
+    UNUSED(state);
+}
+
+static void kiss_cdc_ctrl(void *ctx, CdcCtrlLine lines)
+{
+    UNUSED(ctx);
+    UNUSED(lines);
+}
+
+static void kiss_cdc_config(void *ctx, struct usb_cdc_line_coding *config)
+{
+    UNUSED(ctx);
+    UNUSED(config);
+}
+
+static CdcCallbacks kiss_cdc_cb = {
+    kiss_cdc_tx,
+    kiss_cdc_rx,
+    kiss_cdc_state,
+    kiss_cdc_ctrl,
+    kiss_cdc_config,
+};
+
+static bool kiss_host_up(void)
+{
+    return furi_hal_cdc_get_ctrl_line_state(KISS_CDC_IF) & CdcCtrlLineDTR;
+}
+
+static void kiss_host_send(Kiss *k, uint8_t *buf, uint16_t n)
+{
+    uint16_t c;
+    uint32_t t0;
+
+    while (n)
+    {
+        c = n > CDC_DATA_SZ ? CDC_DATA_SZ : n;
+        t0 = furi_get_tick();
+        while (k->tx_busy && furi_get_tick() - t0 < 100)
+            furi_delay_ms(1);
+        k->tx_busy = true;
+        furi_hal_cdc_send(KISS_CDC_IF, buf, c);
+        buf += c;
+        n -= c;
+    }
+}
+
+static void kiss_frame_cb(AfskFrame *frame, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+    Kiss *k = app->kiss;
+
+    if (!frame->raw || !frame->raw_len || frame->raw_len > KISS_FRAME_MAX)
+        return;
+
+    k->cb_frame.len = frame->raw_len;
+    memcpy(k->cb_frame.data, frame->raw, frame->raw_len);
+    if (furi_message_queue_put(k->rxq, &k->cb_frame, 0) != FuriStatusOk)
+        k->drop_n++;
+    k->rx_n++;
+}
+
+static bool kiss_src_ok(FlipperHamApp *app, const char *src)
+{
+    uint8_t i;
+
+    if (!app->ham_ok)
+        return false;
+    for (i = 0; i < app->ham_n && i < HAM_N; i++)
+        if (app->ham_calls[i][0] && !strcmp(app->ham_calls[i], src))
+            return true;
+    return false;
+}
+
+static void kiss_host_frame(FlipperHamApp *app, Kiss *k)
+{
+    char src[7];
+    uint8_t ssid;
+
+    if (k->in.buf[0] != 0x00)
+        return;
+
+    k->work.len = k->in.len - 1;
+    if (!ax25_ui_check(k->in.buf + 1, k->work.len, src, &ssid) || !kiss_src_ok(app, src))
+    {
+        k->reject_n++;
+        return;
+    }
+
+    memcpy(k->work.data, k->in.buf + 1, k->work.len);
+    if (furi_message_queue_put(k->txq, &k->work, 0) != FuriStatusOk)
+        k->drop_n++;
+}
+
+static void kiss_draw(Canvas *canvas, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+    Kiss *k = app->kiss;
+    char line[44];
+
+    canvas_clear(canvas);
+    canvas_set_font(canvas, FontPrimary);
+    canvas_draw_str(canvas, 0, 10, "KISS TNC (USB)");
+
+    canvas_set_font(canvas, FontSecondary);
+    if (!k->usb_ok)
+    {
+        canvas_draw_str(canvas, 0, 28, "USB setup failed.");
+        canvas_draw_str(canvas, 0, 62, "Back: exit");
+        return;
+    }
+
+    snprintf(line, sizeof(line), "%.4f MHz  Host: %s", (double)app->dra_freq,
+             kiss_host_up() ? "on" : "off");
+    canvas_draw_str(canvas, 0, 22, line);
+    snprintf(line, sizeof(line), "RX:%lu  TX:%lu", (unsigned long)k->rx_n,
+             (unsigned long)k->tx_n);
+    canvas_draw_str(canvas, 0, 34, line);
+    snprintf(line, sizeof(line), "Rejected:%lu  Dropped:%lu", (unsigned long)k->reject_n,
+             (unsigned long)k->drop_n);
+    canvas_draw_str(canvas, 0, 44, line);
+    if (!app->ham_ok)
+        canvas_draw_str(canvas, 0, 54, "TX off: no licensed call");
+    canvas_draw_str(canvas, 0, 63, "Back: exit");
+}
+
+static void kiss_input(InputEvent *event, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+
+    if (event->type == InputTypeShort && event->key == InputKeyBack)
+        app->kiss_active = false;
+}
+
+void flipperham_kiss_enter(FlipperHamApp *app)
+{
+    FuriHalUsbInterface *prev;
+    ViewPort *vp;
+    Kiss *k;
+    int32_t n;
+    int32_t i;
+    uint16_t m;
+    uint32_t last_draw = 0;
+
+    if (!dra818v_ensure_ready(app))
+        return;
+    if (!tx_bufs(app))
+        return;
+
+    k = malloc(sizeof(Kiss));
+    memset(k, 0, sizeof(Kiss));
+    k->rxq = furi_message_queue_alloc(KISS_RXQ_N, sizeof(KissFrame));
+    k->txq = furi_message_queue_alloc(KISS_TXQ_N, sizeof(KissFrame));
+    kiss_rx_reset(&k->in);
+    app->kiss = k;
+    app->kiss_active = true;
+
+    prev = furi_hal_usb_get_config();
+    k->usb_ok = true;
+    if (prev != &usb_cdc_dual)
+    {
+        furi_hal_usb_unlock();
+        k->usb_ok = furi_hal_usb_set_config(&usb_cdc_dual, NULL);
+    }
+    if (k->usb_ok)
+        furi_hal_cdc_set_callbacks(KISS_CDC_IF, &kiss_cdc_cb, k);
+
+    vp = view_port_alloc();
+    view_port_draw_callback_set(vp, kiss_draw, app);
+    view_port_input_callback_set(vp, kiss_input, app);
+    gui_add_view_port(app->gui, vp, GuiLayerFullscreen);
+
+    if (k->usb_ok)
+        afsk_rx_start(&app->afsk_rx, kiss_frame_cb, app);
+
+    while (app->kiss_active)
+    {
+        if (k->usb_ok)
+        {
+            while ((n = furi_hal_cdc_receive(KISS_CDC_IF, k->usb_buf, sizeof(k->usb_buf))) > 0)
+                for (i = 0; i < n; i++)
+                    if (kiss_rx_byte(&k->in, k->usb_buf[i]))
+                    {
+                        kiss_host_frame(app, k);
+                        kiss_rx_reset(&k->in);
+                    }
+
+            while (furi_message_queue_get(k->rxq, &k->work, 0) == FuriStatusOk)
+            {
+                if (!kiss_host_up())
+                    continue;
+                m = kiss_encode(k->work.data, k->work.len, k->out, sizeof(k->out));
+                if (m)
+                    kiss_host_send(k, k->out, m);
+            }
+
+            if (furi_get_tick() - k->last_tx >= KISS_TX_GAP_MS &&
+                furi_message_queue_get(k->txq, &k->work, 0) == FuriStatusOk)
+            {
+                afsk_rx_stop(&app->afsk_rx);
+                txstart_raw(app, k->work.data, k->work.len);
+                if (tx_send(app, vp))
+                    k->tx_n++;
+                k->last_tx = furi_get_tick();
+                afsk_rx_start(&app->afsk_rx, kiss_frame_cb, app);
+            }
+        }
+
+        if (furi_get_tick() - last_draw >= 250)
+        {
+            view_port_update(vp);
+            last_draw = furi_get_tick();
+        }
+        furi_delay_ms(10);
+    }
+
+    if (k->usb_ok)
+    {
+        afsk_rx_stop(&app->afsk_rx);
+        furi_hal_cdc_set_callbacks(KISS_CDC_IF, NULL, NULL);
+        if (prev != &usb_cdc_dual)
+            furi_hal_usb_set_config(prev, NULL);
+    }
+
+    gui_remove_view_port(app->gui, vp);
+    view_port_free(vp);
+
+    furi_message_queue_free(k->rxq);
+    furi_message_queue_free(k->txq);
+    app->kiss = NULL;
+    free(k);
+    tx_bufs_free(app);
+    furi_hal_light_set(LightGreen, 0);
+    furi_hal_light_set(LightRed, 0);
 }

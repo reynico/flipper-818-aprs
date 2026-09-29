@@ -195,20 +195,8 @@ static bool wave_flag(FlipperHamApp *app)
     return true;
 }
 
-void txstart(FlipperHamApp *app)
+static void tx_reset(FlipperHamApp *app)
 {
-    char message[96];
-    char dst[CALL_LEN];
-    const FlipperHamModemProfile *p;
-    const char *path;
-    const char *src;
-    const FlipperHamSymbol *sym;
-    uint16_t i;
-    uint16_t n;
-    uint8_t src_ssid;
-    uint8_t ssid;
-    bool has_ssid;
-
     app->tx_done = false;
     app->tx_ok = false;
     app->wave_i = 0;
@@ -225,6 +213,90 @@ void txstart(FlipperHamApp *app)
     app->pre_us = 0;
     app->pre_k = 0;
     app->wave_is_mark = true;
+}
+
+static void tx_wave(FlipperHamApp *app)
+{
+    const FlipperHamModemProfile *p = &flipperham_modem_profiles[1];
+    uint16_t i;
+    uint16_t n;
+
+    if (app->leadin_ms)
+    {
+        n = (app->leadin_ms * p->baud + 500) / 1000;
+        if (!n)
+            n = 1;
+        for (i = 0; i < n; i++)
+            if (!wave_put(app, 1))
+                return;
+    }
+
+    if (app->preamble_ms)
+    {
+        n = (app->preamble_ms * p->baud + 4000) / 8000;
+        if (!n)
+            n = 1;
+        for (i = 0; i < n; i++)
+            if (!wave_flag(app))
+                return;
+    }
+
+    if (!wave_flag(app))
+        return;
+
+    for (i = 8; i + 8 < app->pkt->stuffed_len; i++)
+    {
+        if (!wave_put(app, app->pkt->stuffed[i]))
+            return;
+    }
+
+    for (i = 0; i < 3; i++)
+    {
+        if (!wave_flag(app))
+            return;
+    }
+
+    if (app->wave_pending > (double)0.000001f)
+        if (!wave_add(app, app->wave_pending))
+            return;
+    app->wave_pending = 0;
+    app->wave_osc_remain = 0;
+    app->wave_prev_h = 0;
+
+    if (!app->wave_len)
+        app->tx_done = true;
+    else
+        app->tx_ok = true;
+}
+
+void txstart_raw(FlipperHamApp *app, const uint8_t *ax25, uint16_t n)
+{
+    tx_reset(app);
+    if (!app->pkt || !app->wave || !ax25 || !n || n > sizeof(app->pkt->ax25))
+        return;
+
+    packet_init(app->pkt);
+    memcpy(app->pkt->ax25, ax25, n);
+    app->pkt->ax25_len = n;
+    packet_add_fcs(app->pkt);
+    packet_stuff(app->pkt);
+    packet_nrzi(app->pkt);
+    tx_wave(app);
+}
+
+void txstart(FlipperHamApp *app)
+{
+    char message[96];
+    char dst[CALL_LEN];
+    const char *path;
+    const char *src;
+    const FlipperHamSymbol *sym;
+    uint16_t i;
+    uint8_t src_ssid;
+    uint8_t ssid;
+    bool has_ssid;
+
+    tx_reset(app);
 
     if (!app->pkt)
         return;
@@ -232,7 +304,6 @@ void txstart(FlipperHamApp *app)
         return;
     if (app->tx_msg_index >= TXT_N)
         return;
-    p = &flipperham_modem_profiles[1];
     sym = symbol_pick(app);
 
     if (app->tx_type == 0)
@@ -380,50 +451,5 @@ void txstart(FlipperHamApp *app)
     if (!aprs_packet(app->pkt, src, src_ssid, MY_TOCALL, 0, message, path))
         return;
 
-    if (app->leadin_ms)
-    {
-        n = (app->leadin_ms * p->baud + 500) / 1000;
-        if (!n)
-            n = 1;
-        for (i = 0; i < n; i++)
-            if (!wave_put(app, 1))
-                return;
-    }
-
-    if (app->preamble_ms)
-    {
-        n = (app->preamble_ms * p->baud + 4000) / 8000;
-        if (!n)
-            n = 1;
-        for (i = 0; i < n; i++)
-            if (!wave_flag(app))
-                return;
-    }
-
-    if (!wave_flag(app))
-        return;
-
-    for (i = 8; i + 8 < app->pkt->stuffed_len; i++)
-    {
-        if (!wave_put(app, app->pkt->stuffed[i]))
-            return;
-    }
-
-    for (i = 0; i < 3; i++)
-    {
-        if (!wave_flag(app))
-            return;
-    }
-
-    if (app->wave_pending > (double)0.000001f)
-        if (!wave_add(app, app->wave_pending))
-            return;
-    app->wave_pending = 0;
-    app->wave_osc_remain = 0;
-    app->wave_prev_h = 0;
-
-    if (!app->wave_len)
-        app->tx_done = true;
-    else
-        app->tx_ok = true;
+    tx_wave(app);
 }

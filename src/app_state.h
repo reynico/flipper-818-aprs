@@ -18,6 +18,8 @@
 #include <gui/gui.h>
 #include <gui/view_port.h>
 
+typedef struct Kiss Kiss;
+
 typedef struct FlipperHamApp
 {
     Gui *gui;
@@ -178,6 +180,8 @@ typedef struct FlipperHamApp
     volatile bool msg_wait;
     volatile bool msg_acked;
     volatile bool msg_cancel;
+    Kiss *kiss;
+    volatile bool kiss_active;
     uint8_t msg_try;
     volatile uint8_t msg_state;
     uint32_t msg_t0;
