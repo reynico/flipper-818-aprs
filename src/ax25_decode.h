@@ -1,6 +1,7 @@
 #pragma once
 
 #include "afsk.h"
+#include "aprs_msg.h"
 #include <stdint.h>
 #include <stdbool.h>
 
@@ -15,6 +16,9 @@ typedef struct {
     char comment[128];
     char msg_to[10];
     char msg_text[68];
+    char msg_no[APRS_MSGNO_LEN];
+    bool msg_is_ack;
+    bool msg_is_rej;
     bool has_pos;
     bool has_msg;
 } AprsDecoded;

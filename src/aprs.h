@@ -17,6 +17,9 @@ int aprs_item(char *out, uint16_t n, const char *name, bool live, const char *la
 int aprs_bulletin(char *out, uint16_t n, uint8_t index, const char *text);
 int aprs_status(char *out, uint16_t n, const char *text);
 int aprs_message(char *out, uint16_t n, const char *dst, uint8_t ssid, const char *text);
+int aprs_message_no(char *out, uint16_t n, const char *dst, uint8_t ssid, const char *text,
+                    const char *msgno);
+int aprs_ack(char *out, uint16_t n, const char *to, const char *msgno);
 int aprs_pos(char *out, uint16_t n, const char *name, const char *lat, const char *lon,
              char sym_table, char sym_code);
 int aprs_pos_compressed(char *out, uint16_t n, const char *name, const char *lat, const char *lon,

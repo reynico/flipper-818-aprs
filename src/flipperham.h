@@ -64,6 +64,8 @@ typedef struct
     uint8_t pos_compressed;
     uint8_t pos_symbol;
     uint8_t beacon_smart;
+    uint8_t auto_ack_off;
+    uint16_t msg_seq;
 } FlipperHamCfg;
 
 #define CFG_MIN_SIZE offsetof(FlipperHamCfg, pos_compressed)
@@ -145,6 +147,7 @@ enum
     FlipperHamRxSettingsIndexSquelch,
     FlipperHamRxSettingsIndexSoundVibro,
     FlipperHamRxSettingsIndexDebugRx,
+    FlipperHamRxSettingsIndexAutoAck,
 };
 
 enum
@@ -205,6 +208,7 @@ enum
     FlipperHamTxTypeObjectKill,
     FlipperHamTxTypeItem,
     FlipperHamTxTypeItemKill,
+    FlipperHamTxTypeAck,
 };
 
 enum

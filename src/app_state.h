@@ -7,6 +7,7 @@
 #include "ax25_decode.h"
 #include "gps.h"
 #include "smartbeacon.h"
+#include "aprs_msg.h"
 
 #include <gui/modules/submenu.h>
 #include <gui/modules/text_input.h>
@@ -166,6 +167,21 @@ typedef struct FlipperHamApp
     bool dra_high_power;
     bool rx_debug;
     bool rx_notify;
+    bool auto_ack;
+    AckCache ack_cache;
+    volatile bool ack_pending;
+    char ack_to[10];
+    char ack_no[APRS_MSGNO_LEN];
+    uint16_t msg_seq;
+    char msg_no_out[APRS_MSGNO_LEN];
+    char msg_dst[CALL_LEN + 4];
+    volatile bool msg_wait;
+    volatile bool msg_acked;
+    volatile bool msg_cancel;
+    uint8_t msg_try;
+    volatile uint8_t msg_state;
+    uint32_t msg_t0;
+    uint32_t msg_to_ms;
     uint8_t rx_hdr[4];
     uint32_t rx_last_crc_fail;
     uint8_t rx_led_state;

@@ -30,3 +30,5 @@ extern const FlipperHamSymbol flipperham_symbols[];
 extern const uint8_t flipperham_symbols_n;
 
 void txstart(FlipperHamApp *app);
+bool tx_src(FlipperHamApp *app, const char **src, uint8_t *ssid);
+bool tx_my_call(FlipperHamApp *app, char *out, uint8_t n);

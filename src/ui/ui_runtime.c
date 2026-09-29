@@ -22,6 +22,8 @@
 
 static void status_input(InputEvent *event, void *context);
 static bool dra818v_ensure_ready(FlipperHamApp *app);
+static void flipperham_send_message_acked(FlipperHamApp *app);
+static void rx_frame_callback(AfskFrame *frame, void *ctx);
 
 void flipperham_status_view_alloc(FlipperHamApp *app)
 {
@@ -360,6 +362,17 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->dra_squelch = 4;
     app->rx_debug = true;
     app->rx_notify = true;
+    app->auto_ack = true;
+    app->ack_pending = false;
+    app->ack_to[0] = 0;
+    app->ack_no[0] = 0;
+    app->msg_seq = 0;
+    app->msg_no_out[0] = 0;
+    app->msg_dst[0] = 0;
+    app->msg_wait = false;
+    app->msg_acked = false;
+    app->msg_cancel = false;
+    ack_cache_reset(&app->ack_cache);
     app->has_decoded = false;
     app->rx_active = false;
     app->rx_count = 0;
@@ -571,6 +584,12 @@ void flipperham_send_hardcoded_message(FlipperHamApp *app)
     uint8_t i, n;
     uint32_t dt, rk, wait_ms;
     bool was_cancelled;
+
+    if (app->tx_type == 2)
+    {
+        flipperham_send_message_acked(app);
+        return;
+    }
 
     if (!app->pkt)
         app->pkt = malloc(sizeof(Packet));
@@ -794,6 +813,41 @@ static void rx_log_to_sd(AprsDecoded *dec)
     furi_record_close(RECORD_STORAGE);
 }
 
+static void rx_msg_handle(FlipperHamApp *app, const AprsDecoded *dec)
+{
+    char me[12];
+    bool licensed;
+
+    if (!dec->has_msg || !dec->msg_no[0])
+        return;
+
+    licensed = tx_my_call(app, me, sizeof(me));
+    if (strcmp(dec->msg_to, me))
+        return;
+
+    if (dec->msg_is_ack || dec->msg_is_rej)
+    {
+        if (app->msg_wait && !strcmp(dec->src, app->msg_dst) &&
+            !strcmp(dec->msg_no, app->msg_no_out))
+        {
+            if (dec->msg_is_ack)
+                app->msg_acked = true;
+            else
+                app->msg_state = 4;
+        }
+        return;
+    }
+
+    if (!app->auto_ack || !licensed || app->ack_pending)
+        return;
+    if (!ack_allow(&app->ack_cache, dec->src, dec->msg_no, furi_get_tick() / 1000))
+        return;
+
+    snprintf(app->ack_to, sizeof(app->ack_to), "%s", dec->src);
+    snprintf(app->ack_no, sizeof(app->ack_no), "%s", dec->msg_no);
+    app->ack_pending = true;
+}
+
 static void rx_frame_callback(AfskFrame *frame, void *ctx)
 {
     FlipperHamApp *app = ctx;
@@ -823,6 +877,7 @@ static void rx_frame_callback(AfskFrame *frame, void *ctx)
         app->has_decoded = true;
         app->rx_count++;
         rx_log_to_sd(&dec);
+        rx_msg_handle(app, &dec);
     }
 }
 
@@ -973,6 +1028,75 @@ static void rx_input(InputEvent *event, void *ctx)
     }
 }
 
+static bool tx_bufs(FlipperHamApp *app)
+{
+    if (!app->pkt)
+        app->pkt = malloc(sizeof(Packet));
+    if (!app->wave)
+        app->wave = malloc(sizeof(uint16_t) * WAVE_N);
+    if (app->pkt && app->wave)
+        return true;
+
+    free(app->pkt);
+    free(app->wave);
+    app->pkt = NULL;
+    app->wave = NULL;
+    return false;
+}
+
+static void tx_bufs_free(FlipperHamApp *app)
+{
+    free(app->pkt);
+    free(app->wave);
+    app->pkt = NULL;
+    app->wave = NULL;
+}
+
+static bool tx_run(FlipperHamApp *app, ViewPort *vp)
+{
+    txstart(app);
+    if (!app->tx_ok || !dra818v_ensure_ready(app))
+        return false;
+
+    tx_blink_green();
+    dra818v_ptt_on(&app->dra);
+    furi_delay_ms(50);
+    afsk_tx_start(&app->afsk_tx, app->wave, app->wave_len);
+    while (app->afsk_tx.active)
+    {
+        if (vp)
+            view_port_update(vp);
+        furi_delay_ms(20);
+    }
+    afsk_tx_stop(&app->afsk_tx);
+    furi_delay_ms(50);
+    dra818v_ptt_off(&app->dra);
+    furi_hal_light_blink_stop();
+    furi_hal_light_set(LightRed, 0);
+    furi_hal_light_set(LightGreen, 0);
+    furi_hal_light_set(LightBlue, 0);
+    return true;
+}
+
+static void ack_service(FlipperHamApp *app, ViewPort *vp)
+{
+    uint8_t saved;
+
+    if (!app->ack_pending)
+        return;
+
+    if (tx_bufs(app))
+    {
+        afsk_rx_stop(&app->afsk_rx);
+        saved = app->tx_type;
+        app->tx_type = FlipperHamTxTypeAck;
+        tx_run(app, vp);
+        app->tx_type = saved;
+        afsk_rx_start(&app->afsk_rx, rx_frame_callback, app);
+    }
+    app->ack_pending = false;
+}
+
 void flipperham_rx_enter(FlipperHamApp *app)
 {
     if(!dra818v_ensure_ready(app)) return;
@@ -991,11 +1115,14 @@ void flipperham_rx_enter(FlipperHamApp *app)
     afsk_rx_start(&app->afsk_rx, rx_frame_callback, app);
 
     while(app->rx_active) {
+        ack_service(app, app->rx_view_port);
         view_port_update(app->rx_view_port);
         furi_delay_ms(500);
     }
 
     afsk_rx_stop(&app->afsk_rx);
+    app->ack_pending = false;
+    tx_bufs_free(app);
     furi_hal_light_set(LightGreen, 0);
     furi_hal_light_set(LightRed, 0);
 
@@ -1555,4 +1682,153 @@ void flipperham_coord_edit(FlipperHamApp *app, char *buf, uint8_t buf_size, bool
             (int)app->coord_digits[4], (int)app->coord_digits[5],
             (int)app->coord_digits[6]);
     }
+}
+
+/* ── Message with ACK ──────────────────────────────────────────── */
+
+static const uint8_t msg_wait_s[] = {30, 60, 120, 120};
+#define MSG_TX_N (sizeof(msg_wait_s) / sizeof(msg_wait_s[0]))
+
+static void msg_draw(Canvas *canvas, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+    char line[44];
+    uint32_t left;
+
+    canvas_clear(canvas);
+    canvas_set_font(canvas, FontPrimary);
+    snprintf(line, sizeof(line), "To %s {%s", app->msg_dst, app->msg_no_out);
+    canvas_draw_str(canvas, 0, 10, line);
+
+    canvas_set_font(canvas, FontSecondary);
+    snprintf(line, sizeof(line), "%.4f MHz  TX %u/%u", (double)app->dra_freq, app->msg_try,
+             (unsigned)MSG_TX_N);
+    canvas_draw_str(canvas, 0, 24, line);
+
+    canvas_set_font(canvas, FontPrimary);
+    if (app->msg_state == 0)
+        canvas_draw_str_aligned(canvas, 64, 42, AlignCenter, AlignCenter, "Sending...");
+    else if (app->msg_state == 1)
+    {
+        left = 0;
+        if (furi_get_tick() - app->msg_t0 < app->msg_to_ms)
+            left = (app->msg_to_ms - (furi_get_tick() - app->msg_t0)) / 1000;
+        snprintf(line, sizeof(line), "Wait ACK %lus", (unsigned long)left);
+        canvas_draw_str_aligned(canvas, 64, 42, AlignCenter, AlignCenter, line);
+    }
+    else if (app->msg_state == 2)
+        canvas_draw_str_aligned(canvas, 64, 42, AlignCenter, AlignCenter, "ACKed");
+    else if (app->msg_state == 3)
+        canvas_draw_str_aligned(canvas, 64, 42, AlignCenter, AlignCenter, "No ACK");
+    else if (app->msg_state == 4)
+        canvas_draw_str_aligned(canvas, 64, 42, AlignCenter, AlignCenter, "Rejected");
+    else
+        canvas_draw_str_aligned(canvas, 64, 42, AlignCenter, AlignCenter, "TX failed");
+
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str_aligned(canvas, 64, 60, AlignCenter, AlignCenter,
+                            app->msg_state <= 1 ? "Back: cancel" : "Press any key");
+}
+
+static void msg_input(InputEvent *event, void *ctx)
+{
+    FlipperHamApp *app = ctx;
+
+    if (event->type != InputTypeShort)
+        return;
+    if (app->msg_state <= 1)
+    {
+        if (event->key == InputKeyBack)
+            app->msg_cancel = true;
+    }
+    else
+        app->msg_cancel = true;
+}
+
+static void flipperham_send_message_acked(FlipperHamApp *app)
+{
+    ViewPort *vp;
+    uint8_t k;
+    uint32_t t0;
+
+    if (!tx_bufs(app))
+        return;
+
+    app->msg_seq = (uint16_t)(app->msg_seq % 999 + 1);
+    snprintf(app->msg_no_out, sizeof(app->msg_no_out), "%u", app->msg_seq);
+    cfgsave(app);
+
+    app->msg_dst[0] = 0;
+    app->msg_acked = false;
+    app->msg_cancel = false;
+    app->msg_state = 0;
+    app->msg_try = 0;
+    app->ack_pending = false;
+
+    vp = view_port_alloc();
+    view_port_draw_callback_set(vp, msg_draw, app);
+    view_port_input_callback_set(vp, msg_input, app);
+    gui_add_view_port(app->gui, vp, GuiLayerFullscreen);
+    furi_hal_power_suppress_charge_enter();
+
+    for (k = 0; k < MSG_TX_N && !app->msg_cancel; k++)
+    {
+        app->msg_try = k + 1;
+        app->msg_state = 0;
+        app->tx_type = 2;
+        view_port_update(vp);
+        if (!tx_run(app, vp))
+        {
+            app->msg_state = 5;
+            break;
+        }
+
+        app->msg_state = 1;
+        app->msg_t0 = furi_get_tick();
+        app->msg_to_ms = (uint32_t)msg_wait_s[k] * 1000;
+        app->msg_wait = true;
+        afsk_rx_start(&app->afsk_rx, rx_frame_callback, app);
+
+        while (!app->msg_cancel && !app->msg_acked && app->msg_state == 1 &&
+               furi_get_tick() - app->msg_t0 < app->msg_to_ms)
+        {
+            ack_service(app, vp);
+            view_port_update(vp);
+            furi_delay_ms(100);
+        }
+
+        afsk_rx_stop(&app->afsk_rx);
+        app->msg_wait = false;
+        app->ack_pending = false;
+
+        if (app->msg_acked)
+        {
+            app->msg_state = 2;
+            break;
+        }
+        if (app->msg_state == 4)
+            break;
+    }
+
+    if (!app->msg_cancel && app->msg_state == 1)
+        app->msg_state = 3;
+
+    furi_hal_power_suppress_charge_exit();
+
+    if (!app->msg_cancel)
+    {
+        app->msg_cancel = false;
+        t0 = furi_get_tick();
+        while (!app->msg_cancel && furi_get_tick() - t0 < 3000)
+        {
+            view_port_update(vp);
+            furi_delay_ms(50);
+        }
+    }
+
+    gui_remove_view_port(app->gui, vp);
+    view_port_free(vp);
+    app->msg_no_out[0] = 0;
+    app->msg_cancel = false;
+    tx_bufs_free(app);
 }
