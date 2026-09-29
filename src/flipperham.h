@@ -105,6 +105,7 @@ enum
     FlipperHamMenuIndexRx,
     FlipperHamMenuIndexSettings,
     FlipperHamMenuIndexReadme,
+    FlipperHamMenuIndexKiss,
 };
 
 enum

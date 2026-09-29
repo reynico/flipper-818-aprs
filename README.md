@@ -9,6 +9,7 @@ By [LU3ARN](https://www.qrz.com/db/LU3ARN). Based on [flipper-ham](https://githu
 ## What it does
 
 - **TX**: Sends APRS messages, status packets, bulletins, and position reports on VHF/UHF
+- **KISS TNC (USB)**: Main menu > KISS TNC (USB) makes the Flipper a KISS TNC for APRSdroid, Xastir, YAAC, Direwolf, etc. The Flipper shows a second serial port for KISS, and the first port stays the normal CLI. Received frames go to the host. The Flipper transmits frames from the host only if they are valid AX.25 UI frames whose source is one of your licensed callsigns (any SSID), with at most one frame per second
 - **Message ACK**: Messages include a message number (`{N`). After it sends a message, the Flipper listens for the ACK. If no ACK comes, it sends again after 30 s, 60 s and 120 s (4 transmissions in total). Back cancels. The screen shows ACKed, No ACK or Rejected. The Repeat TX setting does not apply to messages
 - **Objects/Items**: Send > Object sends a saved location as an APRS object or item (for example, an event marker), or kills it. The name is the first 9 characters of the location name. The symbol comes from TX Settings. Object timestamps use the Flipper clock in local time (`DDHHMM/`)
 - **RX**: Receives and decodes APRS packets in real-time with on-screen display

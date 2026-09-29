@@ -564,6 +564,10 @@ void flipperham_menu_callback(void *context, uint32_t index)
         flipperham_rx_enter(app);
         return;
     }
+    if (index == FlipperHamMenuIndexKiss) {
+        flipperham_kiss_enter(app);
+        return;
+    }
     if (index == FlipperHamMenuIndexSettings)
     {
         settings_menu_build(app);

@@ -88,6 +88,7 @@ void flipperham_menu_free(FlipperHamApp *app);
 uint32_t repeat_scale(FlipperHamApp *app);
 
 void flipperham_rx_enter(FlipperHamApp *app);
+void flipperham_kiss_enter(FlipperHamApp *app);
 void flipperham_beacon_enter(FlipperHamApp *app);
 void flipperham_freq_edit_enter(FlipperHamApp *app);
 void flipperham_coord_edit(FlipperHamApp *app, char *buf, uint8_t buf_size, bool is_lon);

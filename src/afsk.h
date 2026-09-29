@@ -24,6 +24,8 @@ typedef struct {
     char path[56];
     uint8_t payload[256];
     uint16_t payload_len;
+    const uint8_t *raw;
+    uint16_t raw_len;
     bool valid;
 } AfskFrame;
 

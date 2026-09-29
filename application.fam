@@ -73,6 +73,7 @@ App(
         "src/packet.c",
         "src/aprs.c",
         "src/aprs_msg.c",
+        "src/kiss.c",
         "src/rf_gen.c",
         "src/dra818v.c",
         "src/afsk.c",
