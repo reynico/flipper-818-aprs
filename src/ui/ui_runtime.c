@@ -321,6 +321,7 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->aprs_path_edit[0] = 0;
     app->debug_tx = false;
     app->pos_compressed = false;
+    app->pos_symbol = 0;
     app->return_view = FlipperHamViewMenu;
     app->splash_mode = 0;
     app->splash_next_view = FlipperHamViewMenu;
@@ -349,6 +350,7 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->rx_view_port = NULL;
     app->gps_enabled = false;
     app->beacon_interval = 120;
+    app->beacon_smart = false;
     app->beacon_active = false;
     app->beacon_cancel = false;
     app->gps_debug_active = false;
@@ -1099,6 +1101,27 @@ void flipperham_gps_nofix_show(FlipperHamApp *app)
 
 /* ── Beacon mode ───────────────────────────────────────────────── */
 
+static float beacon_speed_kmh(FlipperHamApp *app)
+{
+    return app->gps.speed_knots * 1.852f;
+}
+
+static uint32_t beacon_rate_s(FlipperHamApp *app)
+{
+    if (!app->beacon_smart)
+        return app->beacon_interval;
+    return sb_rate(beacon_speed_kmh(app));
+}
+
+static bool beacon_due(FlipperHamApp *app)
+{
+    if (!app->beacon_smart)
+        return furi_get_tick() - app->repeat_t0 >= (uint32_t)app->beacon_interval * 1000;
+    if (!app->gps.valid)
+        return false;
+    return sb_due(&app->sb, furi_get_tick() / 1000, beacon_speed_kmh(app), app->gps.course);
+}
+
 static void beacon_draw(Canvas *canvas, void *ctx)
 {
     FlipperHamApp *app = ctx;
@@ -1115,8 +1138,12 @@ static void beacon_draw(Canvas *canvas, void *ctx)
 
     canvas_set_font(canvas, FontSecondary);
 
-    snprintf(line, sizeof(line), "%.4f MHz  Int:%us",
-        (double)app->dra_freq, app->beacon_interval);
+    if (app->beacon_smart)
+        snprintf(line, sizeof(line), "%.4f MHz  Smart:%lus",
+            (double)app->dra_freq, (unsigned long)beacon_rate_s(app));
+    else
+        snprintf(line, sizeof(line), "%.4f MHz  Int:%us",
+            (double)app->dra_freq, app->beacon_interval);
     canvas_draw_str(canvas, 0, 22, line);
 
     if (app->gps.valid)
@@ -1136,9 +1163,10 @@ static void beacon_draw(Canvas *canvas, void *ctx)
     }
 
     uint32_t elapsed = (furi_get_tick() - app->repeat_t0) / 1000;
+    uint32_t rate = beacon_rate_s(app);
     uint32_t remaining = 0;
-    if (elapsed < app->beacon_interval)
-        remaining = app->beacon_interval - elapsed;
+    if (elapsed < rate)
+        remaining = rate - elapsed;
 
     snprintf(line, sizeof(line), "TX:%u  Next:%lus",
         app->repeat_i, (unsigned long)remaining);
@@ -1175,6 +1203,7 @@ void flipperham_beacon_enter(FlipperHamApp *app)
     app->beacon_cancel = false;
     app->repeat_i = 0;
     app->repeat_t0 = furi_get_tick() - ((uint32_t)app->beacon_interval * 1000);
+    sb_reset(&app->sb);
 
     furi_hal_power_suppress_charge_enter();
 
@@ -1182,8 +1211,7 @@ void flipperham_beacon_enter(FlipperHamApp *app)
     {
         view_port_update(vp);
 
-        uint32_t elapsed = furi_get_tick() - app->repeat_t0;
-        bool should_tx = (elapsed >= (uint32_t)app->beacon_interval * 1000);
+        bool should_tx = beacon_due(app);
 
         if (should_tx && app->gps.valid)
         {
@@ -1219,6 +1247,7 @@ void flipperham_beacon_enter(FlipperHamApp *app)
                 dra818v_ptt_off(&app->dra);
                 furi_hal_light_set(LightGreen, 0);
                 app->repeat_i++;
+                sb_sent(&app->sb, furi_get_tick() / 1000, app->gps.course);
             }
             app->repeat_t0 = furi_get_tick();
         }

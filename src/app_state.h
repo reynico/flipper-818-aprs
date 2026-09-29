@@ -6,6 +6,7 @@
 #include "afsk.h"
 #include "ax25_decode.h"
 #include "gps.h"
+#include "smartbeacon.h"
 
 #include <gui/modules/submenu.h>
 #include <gui/modules/text_input.h>
@@ -139,6 +140,7 @@ typedef struct FlipperHamApp
     char readme_h[640];
     bool debug_tx;
     bool pos_compressed;
+    uint8_t pos_symbol;
     uint8_t aprs_path_index;
 
     Dra818v dra;
@@ -182,6 +184,8 @@ typedef struct FlipperHamApp
     Gps gps;
     bool gps_enabled;
     uint16_t beacon_interval;
+    bool beacon_smart;
+    SmartBeacon sb;
     bool beacon_active;
     bool beacon_cancel;
     bool gps_debug_active;

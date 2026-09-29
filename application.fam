@@ -77,6 +77,7 @@ App(
         "src/afsk.c",
         "src/ax25_decode.c",
         "src/gps.c",
+        "src/smartbeacon.c",
         "src/ui/ui.c",
         "src/ui/ui_edit.c",
         "src/ui/ui_splash.c",
