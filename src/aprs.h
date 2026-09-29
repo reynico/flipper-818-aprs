@@ -9,6 +9,11 @@ int aprs_lat(char *out, uint16_t n, const char *s);
 int aprs_lon(char *out, uint16_t n, const char *s);
 int aprs_ll_clamp(char *out, uint16_t n, const char *s, uint8_t lon);
 
+int aprs_object(char *out, uint16_t n, const char *name, bool live, uint8_t day, uint8_t hour,
+                uint8_t minute, const char *lat, const char *lon, char sym_table, char sym_code,
+                const char *comment);
+int aprs_item(char *out, uint16_t n, const char *name, bool live, const char *lat, const char *lon,
+              char sym_table, char sym_code, const char *comment);
 int aprs_bulletin(char *out, uint16_t n, uint8_t index, const char *text);
 int aprs_status(char *out, uint16_t n, const char *text);
 int aprs_message(char *out, uint16_t n, const char *dst, uint8_t ssid, const char *text);

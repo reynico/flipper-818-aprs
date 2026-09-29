@@ -340,6 +340,69 @@ int aprs_pos_compressed(char *out, uint16_t n, const char *name, const char *lat
                     name ? name : "");
 }
 
+static bool aprs_name_ok(const char *name, uint8_t min, bool item)
+{
+    uint8_t i;
+
+    if (!name)
+        return false;
+    for (i = 0; name[i]; i++)
+    {
+        if (i >= 9)
+            return false;
+        if (name[i] < ' ' || name[i] > '~')
+            return false;
+        if (item && (name[i] == '!' || name[i] == '_'))
+            return false;
+    }
+    return i >= min;
+}
+
+int aprs_object(char *out, uint16_t n, const char *name, bool live, uint8_t day, uint8_t hour,
+                uint8_t minute, const char *lat, const char *lon, char sym_table, char sym_code,
+                const char *comment)
+{
+    char a[9];
+    char b[10];
+
+    if (!out || !n)
+        return 0;
+    if (!aprs_name_ok(name, 1, false))
+        return 0;
+    if (day < 1 || day > 31 || hour > 23 || minute > 59)
+        return 0;
+    if (!aprs_sym_ok(sym_table, sym_code))
+        return 0;
+    if (aprs_lat(a, sizeof(a), lat) <= 0)
+        return 0;
+    if (aprs_lon(b, sizeof(b), lon) <= 0)
+        return 0;
+
+    return snprintf(out, n, ";%-9s%c%02u%02u%02u/%s%c%s%c%s", name, live ? '*' : '_', day, hour,
+                    minute, a, sym_table, b, sym_code, comment ? comment : "");
+}
+
+int aprs_item(char *out, uint16_t n, const char *name, bool live, const char *lat, const char *lon,
+              char sym_table, char sym_code, const char *comment)
+{
+    char a[9];
+    char b[10];
+
+    if (!out || !n)
+        return 0;
+    if (!aprs_name_ok(name, 3, true))
+        return 0;
+    if (!aprs_sym_ok(sym_table, sym_code))
+        return 0;
+    if (aprs_lat(a, sizeof(a), lat) <= 0)
+        return 0;
+    if (aprs_lon(b, sizeof(b), lon) <= 0)
+        return 0;
+
+    return snprintf(out, n, ")%s%c%s%c%s%c%s", name, live ? '!' : '_', a, sym_table, b, sym_code,
+                    comment ? comment : "");
+}
+
 int aprs_bulletin(char *out, uint16_t n, uint8_t index, const char *text)
 {
     char bulletin_id;

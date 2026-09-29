@@ -546,6 +546,8 @@ void send_menu_build(FlipperHamApp *app)
                      flipperham_send_callback, app);
     submenu_add_item(app->send_menu, "Bulletin", FlipperHamSendIndexBulletin,
                      flipperham_send_callback, app);
+    submenu_add_item(app->send_menu, "Object", FlipperHamSendIndexObject,
+                     flipperham_send_callback, app);
 }
 
 void flipperham_menu_callback(void *context, uint32_t index)
@@ -612,6 +614,12 @@ void flipperham_send_callback(void *context, uint32_t index)
     {
         status_menu_build(app);
         view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewStatus);
+    }
+
+    if (index == FlipperHamSendIndexObject)
+    {
+        object_menu_build(app);
+        view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewObject);
     }
 
 }
@@ -1712,4 +1720,79 @@ static void gps_position_pick(void *context, uint32_t index)
     UNUSED(index);
     gps_action_menu_build(app);
     view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewGpsAction);
+}
+
+static void object_action_do(void *context, uint32_t index)
+{
+    FlipperHamApp *app = context;
+    static const uint8_t types[] = {
+        FlipperHamTxTypeObject,
+        FlipperHamTxTypeObjectKill,
+        FlipperHamTxTypeItem,
+        FlipperHamTxTypeItemKill,
+    };
+
+    if (index >= sizeof(types) / sizeof(types[0]))
+        return;
+
+    app->tx_type = types[index];
+    app->tx_msg_index = app->pos_index;
+    app->return_view = FlipperHamViewObjectAction;
+    app->send_requested = true;
+    view_dispatcher_stop(app->view_dispatcher);
+}
+
+void object_action_menu_build(FlipperHamApp *app)
+{
+    submenu_reset(app->object_action_menu);
+    if (app->pos_index < TXT_N)
+        submenu_set_header(app->object_action_menu, app->pos_name[app->pos_index]);
+    submenu_add_item(app->object_action_menu, "Send Object", FlipperHamObjectActionSend,
+                     object_action_do, app);
+    submenu_add_item(app->object_action_menu, "Kill Object", FlipperHamObjectActionKill,
+                     object_action_do, app);
+    submenu_add_item(app->object_action_menu, "Send Item", FlipperHamObjectActionItemSend,
+                     object_action_do, app);
+    submenu_add_item(app->object_action_menu, "Kill Item", FlipperHamObjectActionItemKill,
+                     object_action_do, app);
+}
+
+static void object_pick(void *context, uint32_t index)
+{
+    FlipperHamApp *app = context;
+    uint32_t i = index - FlipperHamObjectIndexBase;
+
+    if (i >= TXT_N || !app->pos_used[i])
+        return;
+
+    app->pos_index = i;
+    object_action_menu_build(app);
+    view_dispatcher_switch_to_view(app->view_dispatcher, FlipperHamViewObjectAction);
+}
+
+void object_menu_build(FlipperHamApp *app)
+{
+    uint8_t i;
+
+    submenu_reset(app->object_menu);
+    submenu_set_header(app->object_menu, "Object location");
+    for (i = 0; i < TXT_N; i++)
+    {
+        if (!app->pos_used[i] || !app->pos_name[i][0])
+            continue;
+        submenu_add_item(app->object_menu, app->pos_name[i], FlipperHamObjectIndexBase + i,
+                         object_pick, app);
+    }
+}
+
+uint32_t flipperham_object_exit_callback(void *context)
+{
+    UNUSED(context);
+    return FlipperHamViewSend;
+}
+
+uint32_t flipperham_object_action_exit_callback(void *context)
+{
+    UNUSED(context);
+    return FlipperHamViewObject;
 }

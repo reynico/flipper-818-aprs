@@ -280,6 +280,34 @@ void txstart(FlipperHamApp *app)
                            sym->code))
             return;
     }
+    else if (app->tx_type >= FlipperHamTxTypeObject && app->tx_type <= FlipperHamTxTypeItemKill)
+    {
+        char name[10];
+        bool item = app->tx_type >= FlipperHamTxTypeItem;
+        bool live = app->tx_type == FlipperHamTxTypeObject || app->tx_type == FlipperHamTxTypeItem;
+        DateTime dt;
+
+        if (!app->pos_used[app->tx_msg_index])
+            return;
+        snprintf(name, sizeof(name), "%s", app->pos_name[app->tx_msg_index]);
+        if (item)
+        {
+            for (i = 0; name[i]; i++)
+                if (name[i] == '!' || name[i] == '_')
+                    name[i] = '-';
+            if (!aprs_item(message, sizeof(message), name, live, app->pos_lat[app->tx_msg_index],
+                           app->pos_lon[app->tx_msg_index], sym->table, sym->code, NULL))
+                return;
+        }
+        else
+        {
+            furi_hal_rtc_get_datetime(&dt);
+            if (!aprs_object(message, sizeof(message), name, live, dt.day, dt.hour, dt.minute,
+                             app->pos_lat[app->tx_msg_index], app->pos_lon[app->tx_msg_index],
+                             sym->table, sym->code, NULL))
+                return;
+        }
+    }
     else if (app->tx_type == 5)
     {
         if (!aprs_status(message, sizeof(message),
