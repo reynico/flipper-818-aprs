@@ -69,6 +69,8 @@ void flipperham_menu_free(FlipperHamApp *app)
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewRxSettings);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewGpsSettings);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewGpsAction);
+        view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewObject);
+        view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewObjectAction);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewTextInput);
         view_dispatcher_remove_view(app->view_dispatcher, FlipperHamViewReadme);
         view_dispatcher_free(app->view_dispatcher);
@@ -195,6 +197,18 @@ void flipperham_menu_free(FlipperHamApp *app)
         app->gps_action_menu = NULL;
     }
 
+    if (app->object_menu)
+    {
+        submenu_free(app->object_menu);
+        app->object_menu = NULL;
+    }
+
+    if (app->object_action_menu)
+    {
+        submenu_free(app->object_action_menu);
+        app->object_action_menu = NULL;
+    }
+
     if (app->ssid_menu)
     {
         variable_item_list_free(app->ssid_menu);
@@ -270,6 +284,8 @@ FlipperHamApp *flipperham_app_alloc(void)
     app->rx_settings_menu = variable_item_list_alloc();
     app->gps_settings_menu = variable_item_list_alloc();
     app->gps_action_menu = submenu_alloc();
+    app->object_menu = submenu_alloc();
+    app->object_action_menu = submenu_alloc();
     app->text_input = text_input_alloc();
     app->readme_widget = widget_alloc();
     app->splash_view = NULL;
@@ -455,6 +471,10 @@ FlipperHamApp *flipperham_app_alloc(void)
                                flipperham_gps_settings_exit_callback);
     view_set_previous_callback(submenu_get_view(app->gps_action_menu),
                                flipperham_gps_action_exit_callback);
+    view_set_previous_callback(submenu_get_view(app->object_menu),
+                               flipperham_object_exit_callback);
+    view_set_previous_callback(submenu_get_view(app->object_action_menu),
+                               flipperham_object_action_exit_callback);
     view_set_previous_callback(text_input_get_view(app->text_input), flipperham_text_exit_callback);
     view_set_previous_callback(widget_get_view(app->readme_widget),
                                flipperham_readme_exit_callback);
@@ -506,6 +526,10 @@ FlipperHamApp *flipperham_app_alloc(void)
                              variable_item_list_get_view(app->gps_settings_menu));
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewGpsAction,
                              submenu_get_view(app->gps_action_menu));
+    view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewObject,
+                             submenu_get_view(app->object_menu));
+    view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewObjectAction,
+                             submenu_get_view(app->object_action_menu));
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewTextInput,
                              text_input_get_view(app->text_input));
     view_dispatcher_add_view(app->view_dispatcher, FlipperHamViewReadme,

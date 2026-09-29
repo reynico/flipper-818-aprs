@@ -487,6 +487,46 @@ static void test_pos_symbol(void)
     TEST_ASSERT_EQUAL_INT(0, aprs_pos_compressed(c, sizeof(c), "", "0", "0", '/', 0, false, 0, 0));
 }
 
+static void test_object(void)
+{
+    char c[96];
+
+    UNITY_SET_DETAILS("aprs", "object");
+    /* APRS101 ch11 example: ;LEADER   *092345z4903.50N/07201.75W> */
+    TEST_ASSERT_EQUAL_INT(37, aprs_object(c, sizeof(c), "LEADER", true, 9, 23, 45,
+                                          "49.058333", "-72.029167", '/', '>', NULL));
+    TEST_ASSERT_EQUAL_STRING(";LEADER   *092345/4903.50N/07201.75W>", c);
+
+    aprs_object(c, sizeof(c), "LEADER", false, 9, 23, 45, "49.058333", "-72.029167", '/', '>', "ok");
+    TEST_ASSERT_EQUAL_STRING(";LEADER   _092345/4903.50N/07201.75W>ok", c);
+
+    TEST_ASSERT_EQUAL_INT(0, aprs_object(c, sizeof(c), "", true, 9, 23, 45, "0", "0", '/', '>', NULL));
+    TEST_ASSERT_EQUAL_INT(0, aprs_object(c, sizeof(c), "TOOLONGNAME", true, 9, 23, 45, "0", "0", '/', '>', NULL));
+    TEST_ASSERT_EQUAL_INT(0, aprs_object(c, sizeof(c), "X", true, 0, 23, 45, "0", "0", '/', '>', NULL));
+    TEST_ASSERT_EQUAL_INT(0, aprs_object(c, sizeof(c), "X", true, 9, 24, 45, "0", "0", '/', '>', NULL));
+    TEST_ASSERT_EQUAL_INT(0, aprs_object(c, sizeof(c), "X", true, 9, 23, 60, "0", "0", '/', '>', NULL));
+    TEST_ASSERT_EQUAL_INT(0, aprs_object(c, sizeof(c), "X\n", true, 9, 23, 45, "0", "0", '/', '>', NULL));
+}
+
+static void test_item(void)
+{
+    char c[96];
+
+    UNITY_SET_DETAILS("aprs", "item");
+    /* APRS101 ch11 example: )AID #2!4903.50N/07201.75WA */
+    TEST_ASSERT_EQUAL_INT(27, aprs_item(c, sizeof(c), "AID #2", true, "49.058333", "-72.029167",
+                                        '/', 'A', NULL));
+    TEST_ASSERT_EQUAL_STRING(")AID #2!4903.50N/07201.75WA", c);
+
+    aprs_item(c, sizeof(c), "AID #2", false, "49.058333", "-72.029167", '/', 'A', NULL);
+    TEST_ASSERT_EQUAL_STRING(")AID #2_4903.50N/07201.75WA", c);
+
+    TEST_ASSERT_EQUAL_INT(0, aprs_item(c, sizeof(c), "AB", true, "0", "0", '/', 'A', NULL));
+    TEST_ASSERT_EQUAL_INT(0, aprs_item(c, sizeof(c), "A!B", true, "0", "0", '/', 'A', NULL));
+    TEST_ASSERT_EQUAL_INT(0, aprs_item(c, sizeof(c), "A_B", true, "0", "0", '/', 'A', NULL));
+    TEST_ASSERT_EQUAL_INT(0, aprs_item(c, sizeof(c), "ABCDEFGHIJ", true, "0", "0", '/', 'A', NULL));
+}
+
 int main(void)
 {
     suiteSetUp();
@@ -507,5 +547,7 @@ int main(void)
     RUN_TEST(test_loopish_calls_old_pool);
     RUN_TEST(test_pos_compressed);
     RUN_TEST(test_pos_symbol);
+    RUN_TEST(test_object);
+    RUN_TEST(test_item);
     return suiteTearDown(UnityEnd());
 }

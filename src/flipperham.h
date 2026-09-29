@@ -93,6 +93,8 @@ enum
     FlipperHamViewRxSettings,
     FlipperHamViewGpsSettings,
     FlipperHamViewGpsAction,
+    FlipperHamViewObject,
+    FlipperHamViewObjectAction,
 };
 
 enum
@@ -109,6 +111,7 @@ enum
     FlipperHamSendIndexPosition,
     FlipperHamSendIndexStatus,
     FlipperHamSendIndexBulletin,
+    FlipperHamSendIndexObject,
 };
 
 enum
@@ -181,6 +184,27 @@ enum
     FlipperHamGpsActionBeacon,
     FlipperHamGpsActionComment,
     FlipperHamGpsActionClearComment,
+};
+
+enum
+{
+    FlipperHamObjectActionSend = 0,
+    FlipperHamObjectActionKill,
+    FlipperHamObjectActionItemSend,
+    FlipperHamObjectActionItemKill,
+};
+
+enum
+{
+    FlipperHamObjectIndexBase = 600,
+};
+
+enum
+{
+    FlipperHamTxTypeObject = 6,
+    FlipperHamTxTypeObjectKill,
+    FlipperHamTxTypeItem,
+    FlipperHamTxTypeItemKill,
 };
 
 enum

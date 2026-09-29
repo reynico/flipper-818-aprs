@@ -9,6 +9,7 @@ By [LU3ARN](https://www.qrz.com/db/LU3ARN). Based on [flipper-ham](https://githu
 ## What it does
 
 - **TX**: Sends APRS messages, status packets, bulletins, and position reports on VHF/UHF
+- **Objects/Items**: Send > Object sends a saved location as an APRS object or item (for example, an event marker), or kills it. The name is the first 9 characters of the location name. The symbol comes from TX Settings. Object timestamps use the Flipper clock in local time (`DDHHMM/`)
 - **RX**: Receives and decodes APRS packets in real-time with on-screen display
 - **Supported modules**: DRA818V (VHF), DRA818U (UHF), SA818V, SA818U — any module with the standard AT command interface
 - **Preset frequencies**: 144.390 (NA), 144.800 (EU), 145.175 (AU), 144.640 (JP), 144.660 (CN), 145.525 (NZ), 432.500 (70cm)

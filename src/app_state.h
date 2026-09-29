@@ -41,6 +41,8 @@ typedef struct FlipperHamApp
     VariableItemList *rx_settings_menu;
     VariableItemList *gps_settings_menu;
     Submenu *gps_action_menu;
+    Submenu *object_menu;
+    Submenu *object_action_menu;
     TextInput *text_input;
     Widget *readme_widget;
     View *splash_view;

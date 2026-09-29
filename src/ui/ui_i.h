@@ -93,6 +93,10 @@ void flipperham_freq_edit_enter(FlipperHamApp *app);
 void flipperham_coord_edit(FlipperHamApp *app, char *buf, uint8_t buf_size, bool is_lon);
 
 void send_menu_build(FlipperHamApp *app);
+void object_menu_build(FlipperHamApp *app);
+void object_action_menu_build(FlipperHamApp *app);
+uint32_t flipperham_object_exit_callback(void *context);
+uint32_t flipperham_object_action_exit_callback(void *context);
 void gps_settings_menu_build(FlipperHamApp *app);
 void gps_action_menu_build(FlipperHamApp *app);
 void gps_settings_enter(void *context, uint32_t index);
