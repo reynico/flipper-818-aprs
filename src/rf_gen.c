@@ -36,7 +36,7 @@ const FlipperHamSymbol flipperham_symbols[] = {
     {"Balloon", '/', 'O'},
     {"Digi", '/', '#'},
     {"Weather", '/', '_'},
-    {"Portable", '/', '/'},
+    {"Red Dot", '/', '/'},
 };
 
 const uint8_t flipperham_symbols_n = sizeof(flipperham_symbols) / sizeof(flipperham_symbols[0]);
