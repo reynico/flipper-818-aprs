@@ -132,26 +132,15 @@ static bool parse_position(const char *s, uint16_t len, AprsDecoded *out)
 
 static bool parse_message(const char *s, uint16_t len, AprsDecoded *out)
 {
-    uint8_t i = 0;
-    uint8_t t = 0;
-    uint8_t ml = 0;
+    AprsMsg m;
 
-    if(len < 10) return false;
+    if(!aprs_msg_parse(s, len, &m)) return false;
 
-    while(i < 9 && i < len && s[i] != ':') {
-        if(s[i] != ' ')
-            out->msg_to[t++] = s[i];
-        i++;
-    }
-    out->msg_to[t] = 0;
-
-    while(i < len && s[i] != ':') i++;
-    if(i >= len) return false;
-    i++;
-
-    while(i < len && s[i] != '{' && ml < sizeof(out->msg_text) - 1)
-        out->msg_text[ml++] = s[i++];
-    out->msg_text[ml] = 0;
+    memcpy(out->msg_to, m.to, sizeof(out->msg_to));
+    memcpy(out->msg_text, m.text, sizeof(out->msg_text));
+    memcpy(out->msg_no, m.no, sizeof(out->msg_no));
+    out->msg_is_ack = m.is_ack;
+    out->msg_is_rej = m.is_rej;
     out->has_msg = true;
 
     return true;

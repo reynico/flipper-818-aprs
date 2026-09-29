@@ -9,6 +9,7 @@ By [LU3ARN](https://www.qrz.com/db/LU3ARN). Based on [flipper-ham](https://githu
 ## What it does
 
 - **TX**: Sends APRS messages, status packets, bulletins, and position reports on VHF/UHF
+- **Message ACK**: Messages include a message number (`{N`). After it sends a message, the Flipper listens for the ACK. If no ACK comes, it sends again after 30 s, 60 s and 120 s (4 transmissions in total). Back cancels. The screen shows ACKed, No ACK or Rejected. The Repeat TX setting does not apply to messages
 - **Objects/Items**: Send > Object sends a saved location as an APRS object or item (for example, an event marker), or kills it. The name is the first 9 characters of the location name. The symbol comes from TX Settings. Object timestamps use the Flipper clock in local time (`DDHHMM/`)
 - **RX**: Receives and decodes APRS packets in real-time with on-screen display
 - **Supported modules**: DRA818V (VHF), DRA818U (UHF), SA818V, SA818U — any module with the standard AT command interface
@@ -94,6 +95,7 @@ The app appears under **Tools** on the Flipper as **818 APRS Transceiver**.
 | Compressed Pos | Yes/No | Send positions in compressed format (13 bytes, includes course/speed from GPS) |
 | Symbol | Car/Jeep/Truck/House/etc | APRS symbol for outgoing position packets (default `/M`) |
 | Debug RX | Yes/No | Show ADC/CRC/flag stats during RX |
+| Auto ACK | Yes/No | In RX, send an ACK for messages with a message number addressed to your callsign. Only with a licensed callsign from `my-callsigns.txt`. Never as `FL1PER`. Max one ACK per sender and message number every 30 s, and one ACK every 5 s in total |
 
 ## GPS
 

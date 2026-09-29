@@ -1,4 +1,5 @@
 #include "aprs.h"
+#include "aprs_msg.h"
 
 #include <math.h>
 #include <stdbool.h>
@@ -423,6 +424,50 @@ int aprs_status(char *out, uint16_t n, const char *text)
 
 int aprs_message(char *out, uint16_t n, const char *dst, uint8_t ssid, const char *text)
 {
+    return aprs_message_no(out, n, dst, ssid, text, NULL);
+}
+
+int aprs_ack(char *out, uint16_t n, const char *to, const char *msgno)
+{
+    char call[7];
+    uint8_t i;
+    uint8_t ssid;
+
+    if (!out || !n || !to || !aprs_msgno_ok(msgno))
+        return 0;
+
+    for (i = 0; to[i] && to[i] != '-'; i++)
+    {
+        if (i >= 6)
+            return 0;
+        call[i] = to[i];
+    }
+    call[i] = 0;
+    if (!aprs_call_ok(call))
+        return 0;
+
+    if (to[i] == '-')
+    {
+        i++;
+        if (!to[i])
+            return 0;
+        ssid = 0;
+        for (; to[i]; i++)
+        {
+            if (to[i] < '0' || to[i] > '9')
+                return 0;
+            ssid = (uint8_t)(ssid * 10 + (to[i] - '0'));
+            if (ssid > 15)
+                return 0;
+        }
+    }
+
+    return snprintf(out, n, ":%-9s:ack%s", to, msgno);
+}
+
+int aprs_message_no(char *out, uint16_t n, const char *dst, uint8_t ssid, const char *text,
+                    const char *msgno)
+{
     char dst_full[12];
     uint8_t i;
     uint8_t dst_len;
@@ -459,6 +504,10 @@ int aprs_message(char *out, uint16_t n, const char *dst, uint8_t ssid, const cha
     dst_full[i++] = '0' + (ssid % 10);
     dst_full[i] = 0;
 
+    if (msgno && !aprs_msgno_ok(msgno))
+        return 0;
+    if (msgno)
+        return snprintf(out, n, ":%-9s:%s{%s", dst_full, text ? text : "", msgno);
     return snprintf(out, n, ":%-9s:%s", dst_full, text ? text : "");
 }
 

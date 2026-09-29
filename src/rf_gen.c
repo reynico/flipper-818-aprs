@@ -48,6 +48,34 @@ static const FlipperHamSymbol *symbol_pick(FlipperHamApp *app)
     return &flipperham_symbols[app->pos_symbol];
 }
 
+bool tx_src(FlipperHamApp *app, const char **src, uint8_t *ssid)
+{
+    *src = MY_CALL;
+    *ssid = 0;
+    if (!app->ham_ok || !app->ham_n || app->ham_index >= app->ham_n)
+        return false;
+    if (!app->ham_calls[app->ham_index][0])
+        return false;
+
+    *src = app->ham_calls[app->ham_index];
+    if (app->ham_has_ssid[app->ham_index])
+        *ssid = app->ham_ssid[app->ham_index];
+    return true;
+}
+
+bool tx_my_call(FlipperHamApp *app, char *out, uint8_t n)
+{
+    const char *src;
+    uint8_t ssid;
+    bool licensed = tx_src(app, &src, &ssid);
+
+    if (ssid)
+        snprintf(out, n, "%s-%u", src, ssid);
+    else
+        snprintf(out, n, "%s", src);
+    return licensed;
+}
+
 static const char *aprs_path_pick(FlipperHamApp *app)
 {
     static const char *paths[] = {"None", "RFONLY", "NOGATE", "WIDE1-1", "WIDE2-2", "ARISS", "APRSAT", "Custom"};
@@ -308,6 +336,11 @@ void txstart(FlipperHamApp *app)
                 return;
         }
     }
+    else if (app->tx_type == FlipperHamTxTypeAck)
+    {
+        if (!aprs_ack(message, sizeof(message), app->ack_to, app->ack_no))
+            return;
+    }
     else if (app->tx_type == 5)
     {
         if (!aprs_status(message, sizeof(message),
@@ -332,22 +365,17 @@ void txstart(FlipperHamApp *app)
             return;
         if (!has_ssid)
             ssid = app->dst_ssid;
-        if (!aprs_message(message, sizeof(message), dst, ssid, app->message[app->tx_msg_index]))
+        if (!aprs_message_no(message, sizeof(message), dst, ssid, app->message[app->tx_msg_index],
+                             app->msg_no_out[0] ? app->msg_no_out : NULL))
             return;
+        if (ssid)
+            snprintf(app->msg_dst, sizeof(app->msg_dst), "%s-%u", dst, ssid);
+        else
+            snprintf(app->msg_dst, sizeof(app->msg_dst), "%s", dst);
     }
 
-    src = MY_CALL;
-    src_ssid = 0;
     path = aprs_path_pick(app);
-    if (app->ham_ok)
-        if (app->ham_n)
-            if (app->ham_index < app->ham_n)
-            {
-                if (app->ham_calls[app->ham_index][0])
-                    src = app->ham_calls[app->ham_index];
-                if (app->ham_has_ssid[app->ham_index])
-                    src_ssid = app->ham_ssid[app->ham_index];
-            }
+    tx_src(app, &src, &src_ssid);
 
     if (!aprs_packet(app->pkt, src, src_ssid, MY_TOCALL, 0, message, path))
         return;
