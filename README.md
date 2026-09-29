@@ -101,7 +101,8 @@ Enable GPS under **Settings > GPS Settings**. Once enabled, the module begins pa
 ### Features
 
 - **Live position TX**: Send a one-shot APRS position report using the current GPS coordinates
-- **Beacon mode**: Automatic periodic position transmission at a configurable interval
+- **Beacon mode**: Automatic position transmission, at a fixed interval or with SmartBeaconing
+  - SmartBeaconing: 30 min at 5 km/h or less, 90 s at 90 km/h or more, `90 * 90 / speed` s between. When you turn more than `28 + 410 / speed` degrees, it sends a beacon immediately, but only if the last beacon was 30 s ago or more
 - **GPS status screen**: Real-time display of fix quality, satellite count, coordinates, speed, course, and altitude
 
 ### GPS settings
@@ -109,7 +110,8 @@ Enable GPS under **Settings > GPS Settings**. Once enabled, the module begins pa
 | Setting | Options | Description |
 |---------|---------|-------------|
 | Enable GPS | Yes/No | Start/stop the GPS serial interface |
-| Beacon Interval | 30s / 60s / 120s / 5min / 10min | Time between automatic beacon transmissions |
+| Beacon Mode | Fixed/Smart | Fixed uses Beacon Interval. Smart uses SmartBeaconing |
+| Beacon Interval | 30s / 60s / 120s / 5min / 10min | Time between beacons in Fixed mode |
 | GPS Comment | Free text (63 chars) | Custom comment appended to position packets |
 
 Position packets include latitude, longitude, course, speed, altitude, and battery voltage. When no custom comment is set, the packet defaults to `Flipper Zero | Spd:XXkm/h Bat:X.XXV`.

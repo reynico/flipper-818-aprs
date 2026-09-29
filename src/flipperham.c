@@ -84,6 +84,7 @@ static void cfg_defaults(FlipperHamApp *app)
     app->rx_active = false;
     app->gps_enabled = false;
     app->beacon_interval = 120;
+    app->beacon_smart = false;
     app->gps_comment[0] = 0;
 }
 
@@ -112,6 +113,7 @@ void cfgsave(FlipperHamApp *app)
     c->beacon_interval = app->beacon_interval;
     c->pos_compressed = app->pos_compressed ? 1 : 0;
     c->pos_symbol = app->pos_symbol;
+    c->beacon_smart = app->beacon_smart ? 1 : 0;
     memcpy(c->gps_comment, app->gps_comment, sizeof(c->gps_comment));
     c->dra_freq_index = app->dra_freq_index;
     memcpy(c->custom_freq, app->custom_freq_edit, sizeof(c->custom_freq));
@@ -222,6 +224,7 @@ void cfgload(FlipperHamApp *app)
     app->beacon_interval = c->beacon_interval;
     app->pos_compressed = c->pos_compressed ? true : false;
     app->pos_symbol = c->pos_symbol < flipperham_symbols_n ? c->pos_symbol : 0;
+    app->beacon_smart = c->beacon_smart ? true : false;
     memcpy(app->gps_comment, c->gps_comment, sizeof(app->gps_comment));
     app->gps_comment[TXT_LEN - 1] = 0;
     app->dra_freq_index = c->dra_freq_index;

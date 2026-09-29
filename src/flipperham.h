@@ -63,6 +63,7 @@ typedef struct
     char gps_comment[TXT_LEN];
     uint8_t pos_compressed;
     uint8_t pos_symbol;
+    uint8_t beacon_smart;
 } FlipperHamCfg;
 
 #define CFG_MIN_SIZE offsetof(FlipperHamCfg, pos_compressed)

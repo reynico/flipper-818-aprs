@@ -30,6 +30,7 @@ static void squelch_change(VariableItem *item);
 static void aprs_path_custom_save(void *context);
 static void gps_enable_change(VariableItem *item);
 static void beacon_interval_change(VariableItem *item);
+static void beacon_mode_change(VariableItem *item);
 static const char *aprs_paths[] = {"None", "RFONLY", "NOGATE", "W1-1", "W2-2", "ARISS", "APRSAT", "Custom"};
 FlipperHamApp *gapp;
 static bool call_copy(FlipperHamApp *app);
@@ -1563,6 +1564,15 @@ static void gps_enable_change(VariableItem *item)
     cfgsave(app);
 }
 
+static void beacon_mode_change(VariableItem *item)
+{
+    FlipperHamApp *app = variable_item_get_context(item);
+
+    app->beacon_smart = variable_item_get_current_value_index(item) ? true : false;
+    variable_item_set_current_value_text(item, app->beacon_smart ? "Smart" : "Fixed");
+    cfgsave(app);
+}
+
 static void beacon_interval_change(VariableItem *item)
 {
     FlipperHamApp *app = variable_item_get_context(item);
@@ -1585,6 +1595,10 @@ void gps_settings_menu_build(FlipperHamApp *app)
     variable_item_set_current_value_index(it, app->gps_enabled ? 1 : 0);
     variable_item_set_current_value_text(it, app->gps_enabled ? "Yes" : "No");
 
+    it = variable_item_list_add(app->gps_settings_menu, "Beacon Mode", 2, beacon_mode_change, app);
+    variable_item_set_current_value_index(it, app->beacon_smart ? 1 : 0);
+    variable_item_set_current_value_text(it, app->beacon_smart ? "Smart" : "Fixed");
+
     it = variable_item_list_add(app->gps_settings_menu, "Beacon Interval",
                                 BEACON_INTERVAL_COUNT, beacon_interval_change, app);
     bi = 2;
@@ -1600,7 +1614,7 @@ void gps_settings_enter(void *context, uint32_t index)
 {
     FlipperHamApp *app = context;
 
-    if (index == 2)
+    if (index == 3)
     {
         app->gps_debug_active = true;
         app->return_view = FlipperHamViewGpsSettings;
