@@ -451,6 +451,25 @@ static void test_loopish_calls_old_pool(void)
     }
 }
 
+static void test_pos_compressed(void)
+{
+    char c[64];
+
+    UNITY_SET_DETAILS("aprs", "compressed");
+    /* APRS101 ch9 example: 49 30'N 72 45'W -> 5L!! <*e7 */
+    TEST_ASSERT_EQUAL_INT(14, aprs_pos_compressed(c, sizeof(c), "", "49.5", "-72.75", false, 0, 0));
+    TEST_ASSERT_EQUAL_STRING("!/5L!!<*e7M   ", c);
+
+    /* APRS101 ch9 example: course 88, speed 36.2 kn -> c='7' s='P' */
+    TEST_ASSERT_EQUAL_INT(18, aprs_pos_compressed(c, sizeof(c), "test", "49.5", "-72.75", true, 88.0f, 36.2f));
+    TEST_ASSERT_EQUAL_STRING("!/5L!!<*e7M7P_test", c);
+
+    TEST_ASSERT_EQUAL_INT(14, aprs_pos_compressed(c, sizeof(c), NULL, "-90", "180", false, 0, 0));
+    TEST_ASSERT_EQUAL_INT(0, aprs_pos_compressed(c, sizeof(c), "", "91", "0", false, 0, 0));
+    TEST_ASSERT_EQUAL_INT(0, aprs_pos_compressed(c, sizeof(c), "", "0", "-181", false, 0, 0));
+    TEST_ASSERT_EQUAL_INT(0, aprs_pos_compressed(c, sizeof(c), "", "abc", "0", false, 0, 0));
+}
+
 int main(void)
 {
     suiteSetUp();
@@ -469,5 +488,6 @@ int main(void)
     RUN_TEST(test_pos_packet_yo8yl);
     RUN_TEST(test_loopish_calls);
     RUN_TEST(test_loopish_calls_old_pool);
+    RUN_TEST(test_pos_compressed);
     return suiteTearDown(UnityEnd());
 }

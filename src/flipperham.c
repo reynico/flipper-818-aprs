@@ -40,6 +40,7 @@ static void cfg_defaults(FlipperHamApp *app)
     app->aprs_path_index = 0;
     app->aprs_path_edit[0] = 0;
     app->debug_tx = false;
+    app->pos_compressed = false;
 
     snprintf(app->bulletin[0], sizeof(app->bulletin[0]), "flipper bulletin");
     snprintf(app->status[0], sizeof(app->status[0]), "flipper status");
@@ -108,6 +109,7 @@ void cfgsave(FlipperHamApp *app)
     c->dra_high_power = app->dra_high_power ? 1 : 0;
     c->gps_enabled = app->gps_enabled ? 1 : 0;
     c->beacon_interval = app->beacon_interval;
+    c->pos_compressed = app->pos_compressed ? 1 : 0;
     memcpy(c->gps_comment, app->gps_comment, sizeof(c->gps_comment));
     c->dra_freq_index = app->dra_freq_index;
     memcpy(c->custom_freq, app->custom_freq_edit, sizeof(c->custom_freq));
@@ -194,7 +196,7 @@ void cfgload(FlipperHamApp *app)
     storage_file_free(file);
     furi_record_close(RECORD_STORAGE);
 
-    if (n != sizeof(FlipperHamCfg))
+    if (n < CFG_MIN_SIZE || n > sizeof(FlipperHamCfg))
     {
         free(c);
         cfg_defaults(app);
@@ -216,6 +218,7 @@ void cfgload(FlipperHamApp *app)
     app->dra_high_power = c->dra_high_power ? true : false;
     app->gps_enabled = c->gps_enabled ? true : false;
     app->beacon_interval = c->beacon_interval;
+    app->pos_compressed = c->pos_compressed ? true : false;
     memcpy(app->gps_comment, c->gps_comment, sizeof(app->gps_comment));
     app->gps_comment[TXT_LEN - 1] = 0;
     app->dra_freq_index = c->dra_freq_index;

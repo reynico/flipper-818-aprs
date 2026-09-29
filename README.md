@@ -90,6 +90,7 @@ The app appears under **Tools** on the Flipper as **818 APRS Transceiver**.
 | Volume | 1-8 | DRA818V audio output level |
 | Squelch | 0-8 | RX squelch threshold (0=open) |
 | Debug TX | Yes/No | Show packet details during TX |
+| Compressed Pos | Yes/No | Send positions in compressed format (13 bytes, includes course/speed from GPS) |
 | Debug RX | Yes/No | Show ADC/CRC/flag stats during RX |
 
 ## GPS
