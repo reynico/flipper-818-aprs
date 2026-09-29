@@ -32,7 +32,7 @@ static void aprs_path_custom_save(void *context);
 static void gps_enable_change(VariableItem *item);
 static void beacon_interval_change(VariableItem *item);
 static void beacon_mode_change(VariableItem *item);
-static const char *aprs_paths[] = {"None", "RFONLY", "NOGATE", "W1-1", "W2-2", "ARISS", "APRSAT", "Custom"};
+static const char *aprs_paths[] = {"None", "RFONLY", "NOGATE", "W1-1", "W2-2", "ARISS", "APRSAT", "Custom", "W1-1,W2-1", "W1-1,W2-2"};
 FlipperHamApp *gapp;
 static bool call_copy(FlipperHamApp *app);
 
@@ -52,7 +52,7 @@ static void aprs_path_up(char *s)
 
 static const char *txdbgpath(FlipperHamApp *app)
 {
-    static const char *a[] = {"None", "RFONLY", "NOGATE", "WIDE1-1", "WIDE2-2", "ARISS", "APRSAT", "Custom"};
+    static const char *a[] = {"None", "RFONLY", "NOGATE", "WIDE1-1", "WIDE2-2", "ARISS", "APRSAT", "Custom", "WIDE1-1,WIDE2-1", "WIDE1-1,WIDE2-2"};
 
     if (!app) return NULL;
     if (app->aprs_path_index >= sizeof(a) / sizeof(a[0])) return NULL;

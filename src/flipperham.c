@@ -264,7 +264,7 @@ void cfgload(FlipperHamApp *app)
 
     if (app->dst_ssid > 15)
         app->dst_ssid = 0;
-    if (app->aprs_path_index > 7)
+    if (app->aprs_path_index > 9)
         app->aprs_path_index = 0;
     if (!app->repeat_n || app->repeat_n > 5)
         app->repeat_n = 1;

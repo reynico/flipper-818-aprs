@@ -78,7 +78,7 @@ bool tx_my_call(FlipperHamApp *app, char *out, uint8_t n)
 
 static const char *aprs_path_pick(FlipperHamApp *app)
 {
-    static const char *paths[] = {"None", "RFONLY", "NOGATE", "WIDE1-1", "WIDE2-2", "ARISS", "APRSAT", "Custom"};
+    static const char *paths[] = {"None", "RFONLY", "NOGATE", "WIDE1-1", "WIDE2-2", "ARISS", "APRSAT", "Custom", "WIDE1-1,WIDE2-1", "WIDE1-1,WIDE2-2"};
 
     if (!app) return NULL;
     if (app->aprs_path_index >= sizeof(paths) / sizeof(paths[0])) return NULL;

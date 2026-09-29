@@ -527,6 +527,25 @@ static void test_item(void)
     TEST_ASSERT_EQUAL_INT(0, aprs_item(c, sizeof(c), "ABCDEFGHIJ", true, "0", "0", '/', 'A', NULL));
 }
 
+static void test_two_hop_path(void)
+{
+    Packet p;
+    uint8_t a[7];
+
+    UNITY_SET_DETAILS("aprs", "path");
+    TEST_ASSERT_TRUE(aprs_packet(&p, "LU3ARN", 14, "APFLIP", 0, ">hi", "WIDE1-1,WIDE2-1"));
+    TEST_ASSERT_EQUAL_UINT16(14 + 14 + 2 + 3, p.ax25_len);
+
+    ax7(a, "LU3ARN", 14, 0);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(a, p.ax25 + 7, 7);
+    ax7(a, "WIDE1", 1, 0);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(a, p.ax25 + 14, 7);
+    ax7(a, "WIDE2", 1, 1);
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(a, p.ax25 + 21, 7);
+    TEST_ASSERT_EQUAL_HEX8(0x03, p.ax25[28]);
+    TEST_ASSERT_EQUAL_HEX8(0xF0, p.ax25[29]);
+}
+
 int main(void)
 {
     suiteSetUp();
@@ -549,5 +568,6 @@ int main(void)
     RUN_TEST(test_pos_symbol);
     RUN_TEST(test_object);
     RUN_TEST(test_item);
+    RUN_TEST(test_two_hop_path);
     return suiteTearDown(UnityEnd());
 }

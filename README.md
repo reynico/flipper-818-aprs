@@ -84,7 +84,7 @@ The app appears under **Tools** on the Flipper as **818 APRS Transceiver**.
 | Setting | Range | Description |
 |---------|-------|-------------|
 | Freq | Presets | APRS frequency for your region |
-| APRS Path | None/WIDE1-1/WIDE2-2/etc | Digipeater path |
+| APRS Path | None/WIDE1-1/WIDE2-2/WIDE1-1,WIDE2-1/WIDE1-1,WIDE2-2/etc | Digipeater path. Mobiles and HTs should use WIDE1-1,WIDE2-1 |
 | TX Power | Low/High | Low = 0.5W, High = 1W |
 | Repeat TX | 1-5 | Number of transmission repeats |
 | Lead-in | 0-1000 ms | Mark tone before preamble |
